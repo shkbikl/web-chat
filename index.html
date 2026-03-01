@@ -896,17 +896,38 @@
         const gateway = document.getElementById('setting-gateway');
         const k = document.getElementById('setting-apikey');
         
+        log('🔧 开始保存设置...');
+        log('   saveConfig 函数是否存在: ' + (typeof saveConfig !== 'undefined'));
+        log('   gateway 值: ' + (gateway ? gateway.value : 'N/A'));
+        log('   apikey 值: ' + (k ? k.value : 'N/A'));
+        
         if (gateway && gateway.value.trim()) {
           window.CONFIG.gatewayUrl = gateway.value.trim();
+          log('   ✅ gatewayUrl 已更新: ' + window.CONFIG.gatewayUrl);
         }
         
         if (k && k.value.trim()) {
           window.CONFIG.apiKey = k.value.trim();
+          log('   ✅ apiKey 已更新: ' + window.CONFIG.apiKey);
         }
         
-        saveConfig(window.CONFIG);
+        if (typeof saveConfig === 'function') {
+          saveConfig(window.CONFIG);
+          log('   ✅ saveConfig 执行成功');
+        } else {
+          log('   ❌ saveConfig 函数不存在！');
+          alert('保存失败：配置函数未加载');
+          return;
+        }
+        
         hideSettings();
         log('💾 设置已保存');
+        
+        // 验证保存是否成功
+        setTimeout(() => {
+          const saved = localStorage.getItem('openclaw-config');
+          log('📦 localStorage 验证: ' + saved);
+        }, 100);
       }
 
       return {
