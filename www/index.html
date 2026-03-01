@@ -686,12 +686,20 @@
         updateStatus('处理中...', true);
 
         try {
-          const response = await fetch('/v1/chat/completions', {
+          const apiUrl = window.getApiUrl();
+          const apiKey = window.CONFIG.apiKey;
+          
+          log('📡 请求 URL: ' + apiUrl);
+          log('📡 API Key: ' + apiKey.substring(0, 8) + '...');
+          
+          // 使用 Headers 对象构建请求头，避免编码问题
+          const headers = new Headers();
+          headers.append('Content-Type', 'application/json');
+          headers.append('Authorization', 'Bearer ' + apiKey);
+          
+          const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + window.CONFIG.apiKey
-            },
+            headers: headers,
             body: JSON.stringify({
               model: 'openclaw:main',
               messages: [...history, { role: 'user', content: fullContent }],
@@ -699,7 +707,11 @@
             })
           });
 
+          log('📡 响应状态: ' + response.status);
+
           if (!response.ok) {
+            const errorText = await response.text();
+            log('❌ 错误响应: ' + errorText.substring(0, 200));
             throw new Error('HTTP ' + response.status);
           }
 
@@ -896,20 +908,35 @@
         const g = document.getElementById('setting-gateway');
         const k = document.getElementById('setting-apikey');
 
-        // 同时更新 gateway 和 apikey
+        // 清理并验证 gateway
         if (g && g.value.trim()) {
-          window.CONFIG.gatewayUrl = g.value.trim();
+          const gateway = g.value.trim();
+          // 移除可能的引号、空格等
+          window.CONFIG.gatewayUrl = gateway.replace(/['"\s]/g, '');
+          log('📋 Gateway: ' + window.CONFIG.gatewayUrl);
         }
+
+        // 清理并验证 API Key
         if (k && k.value.trim()) {
-          window.CONFIG.apiKey = k.value.trim();
+          const key = k.value.trim();
+          // 移除可能的引号、空格、换行符
+          window.CONFIG.apiKey = key.replace(/['"\s\r\n]/g, '');
+          log('📋 API Key: ' + window.CONFIG.apiKey.substring(0, 8) + '...');
+          
+          // 验证 API Key 长度
+          if (window.CONFIG.apiKey.length < 10) {
+            log('⚠️ 警告: API Key 可能无效（太短）');
+          }
         }
 
         // 保存到 localStorage
         if (typeof saveConfig === 'function') {
-          saveConfig(window.CONFIG);
-          log('✅ 设置已保存:');
-          log('  - Gateway: ' + window.CONFIG.gatewayUrl);
-          log('  - API Key: ' + window.CONFIG.apiKey);
+          try {
+            saveConfig(window.CONFIG);
+            log('✅ 设置已保存到 localStorage');
+          } catch (e) {
+            log('❌ 保存设置失败: ' + e.message);
+          }
         } else {
           log('❌ saveConfig 函数不存在');
         }
