@@ -893,11 +893,18 @@
       }
 
       function saveSettings() {
+        const gateway = document.getElementById('setting-gateway');
         const k = document.getElementById('setting-apikey');
+        
+        if (gateway && gateway.value.trim()) {
+          window.CONFIG.gatewayUrl = gateway.value.trim();
+        }
+        
         if (k && k.value.trim()) {
           window.CONFIG.apiKey = k.value.trim();
-          saveConfig(window.CONFIG);
         }
+        
+        saveConfig(window.CONFIG);
         hideSettings();
         log('💾 设置已保存');
       }
