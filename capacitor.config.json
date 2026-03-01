@@ -1,0 +1,26 @@
+{
+  "appId": "com.openclaw.chat",
+  "appName": "OpenClaw Chat",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#1e1e1e",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#FF4A148C",
+      "sound": "beep.wav"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}
