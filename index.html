@@ -696,7 +696,11 @@
         updateStatus('处理中...', true);
 
         const apiUrl = getApiUrl('/v1/chat/completions');
+        log('📡 Gateway URL: ' + (window.CONFIG.gatewayUrl || '未设置'));
+        log('📡 API Key: ' + (window.CONFIG.apiKey ? '已设置(' + window.CONFIG.apiKey.length + '字符)' : '未设置'));
         log('📡 请求 URL: ' + apiUrl);
+        log('📡 网络类型: ' + (navigator.connection?.effectiveType || '未知'));
+        log('📡 离线状态: ' + (navigator.onLine ? '在线' : '离线'));
 
         try {
           const response = await fetch(apiUrl, {
