@@ -893,13 +893,28 @@
       }
 
       function saveSettings() {
+        const g = document.getElementById('setting-gateway');
         const k = document.getElementById('setting-apikey');
+
+        // 同时更新 gateway 和 apikey
+        if (g && g.value.trim()) {
+          window.CONFIG.gatewayUrl = g.value.trim();
+        }
         if (k && k.value.trim()) {
           window.CONFIG.apiKey = k.value.trim();
-          saveConfig(window.CONFIG);
         }
+
+        // 保存到 localStorage
+        if (typeof saveConfig === 'function') {
+          saveConfig(window.CONFIG);
+          log('✅ 设置已保存:');
+          log('  - Gateway: ' + window.CONFIG.gatewayUrl);
+          log('  - API Key: ' + window.CONFIG.apiKey);
+        } else {
+          log('❌ saveConfig 函数不存在');
+        }
+
         hideSettings();
-        log('💾 设置已保存');
       }
 
       return {

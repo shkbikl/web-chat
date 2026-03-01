@@ -38,5 +38,9 @@ function saveConfig(config) {
   localStorage.setItem('openclaw-config', JSON.stringify(config));
 }
 
+// 暴露到全局作用域
+window.saveConfig = saveConfig;
+window.loadConfig = loadConfig;
+
 // 全局配置对象
 window.CONFIG = loadConfig();
