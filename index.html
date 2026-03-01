@@ -627,6 +627,16 @@
         return { name: file.name, error: true };
       }
 
+      // 获取完整的 API URL
+      function getApiUrl(path) {
+        const gateway = window.CONFIG.gatewayUrl || '';
+        // 将 ws:// 转换为 http://
+        const httpGateway = gateway.replace('ws://', 'http://').replace('wss://', 'https://');
+        // 移除末尾斜杠
+        const baseUrl = httpGateway.replace(/\/$/, '');
+        return baseUrl + path;
+      }
+
       // HTTP API 发送消息
       async function sendMessage() {
         const content = els.input ? els.input.value.trim() : '';
@@ -685,8 +695,11 @@
         renderMessage({ id: loadingId, role: 'assistant', content: '...', loading: true });
         updateStatus('处理中...', true);
 
+        const apiUrl = getApiUrl('/v1/chat/completions');
+        log('📡 请求 URL: ' + apiUrl);
+
         try {
-          const response = await fetch('/v1/chat/completions', {
+          const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -699,8 +712,36 @@
             })
           });
 
+          log('📡 响应状态: ' + response.status);
+
           if (!response.ok) {
-            throw new Error('HTTP ' + response.status);
+            // 尝试读取错误内容
+            let errorText = '';
+            try {
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const errorJson = await response.json();
+                errorText = JSON.stringify(errorJson);
+              } else {
+                errorText = await response.text();
+                // 只显示前 200 个字符
+                if (errorText.length > 200) {
+                  errorText = errorText.substring(0, 200) + '...';
+                }
+              }
+            } catch (e) {
+              errorText = '无法读取错误详情';
+            }
+            throw new Error('HTTP ' + response.status + (errorText ? ': ' + errorText : ''));
+          }
+
+          const contentType = response.headers.get('content-type');
+          log('📡 响应类型: ' + contentType);
+
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            log('⚠️ 非 JSON 响应: ' + text.substring(0, 200));
+            throw new Error('服务器返回非 JSON 响应');
           }
 
           const data = await response.json();
