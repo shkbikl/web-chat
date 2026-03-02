@@ -711,7 +711,7 @@
               'Authorization': 'Bearer ' + apiKey
             },
             body: JSON.stringify({
-              model: 'openclaw:main',
+              model: 'bailian:glm-4.7',
               messages: [...history, { role: 'user', content: fullContent }],
               stream: false
             })
