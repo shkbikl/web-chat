@@ -996,8 +996,27 @@
         toggleLog,
         showSettings,
         hideSettings,
-        saveSettings
+        saveSettings,
+        setupKeyboardAdapter
       };
+
+    })();
+
+    // 暴露到全局作用域（用于 HTML onclick）
+    window.app = app;
+    window.toggleLog = () => app.toggleLog();
+    window.toggleDark = () => app.toggleDark();
+    window.clearChat = () => app.clearChat();
+    window.showSettings = () => app.showSettings();
+    window.hideSettings = () => app.hideSettings();
+    window.saveSettings = () => app.saveSettings();
+    window.sendMessage = () => app.sendMessage();
+    window.autoResize = (t) => app.autoResize(t);
+    window.handleEnter = (e) => app.handleEnter(e);
+    window.handleFileSelect = (e) => app.handleFileSelect(e);
+    window.removeFile = (i) => app.removeFile(i);
+
+    document.addEventListener('DOMContentLoaded', () => app.init());
     })();
 
     document.addEventListener('DOMContentLoaded', () => app.init());
