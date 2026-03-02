@@ -686,20 +686,30 @@
         updateStatus('处理中...', true);
 
         try {
+          // 诊断：检查 window.getApiUrl 是否存在
+          if (typeof window.getApiUrl !== 'function') {
+            log('❌ window.getApiUrl 函数不存在');
+            throw new Error('getApiUrl 函数未定义');
+          }
+
           const apiUrl = window.getApiUrl();
           const apiKey = window.CONFIG.apiKey;
-          
+
+          log('📡 Gateway URL: ' + window.CONFIG.gatewayUrl);
           log('📡 请求 URL: ' + apiUrl);
-          log('📡 API Key: ' + apiKey.substring(0, 8) + '...');
-          
-          // 使用 Headers 对象构建请求头，避免编码问题
-          const headers = new Headers();
-          headers.append('Content-Type', 'application/json');
-          headers.append('Authorization', 'Bearer ' + apiKey);
-          
+          log('📡 API Key: ' + (apiKey ? apiKey.substring(0, 8) + '...' : '未设置'));
+
+          if (!apiKey) {
+            log('❌ API Key 未设置，请打开设置配置');
+            throw new Error('API Key 未设置');
+          }
+
           const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: headers,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + apiKey
+            },
             body: JSON.stringify({
               model: 'openclaw:main',
               messages: [...history, { role: 'user', content: fullContent }],
@@ -710,9 +720,22 @@
           log('📡 响应状态: ' + response.status);
 
           if (!response.ok) {
-            const errorText = await response.text();
-            log('❌ 错误响应: ' + errorText.substring(0, 200));
-            throw new Error('HTTP ' + response.status);
+            let errorText = '';
+            try {
+              const contentType = response.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const errorJson = await response.json();
+                errorText = JSON.stringify(errorJson);
+              } else {
+                errorText = await response.text();
+                if (errorText.length > 200) {
+                  errorText = errorText.substring(0, 200) + '...';
+                }
+              }
+            } catch (e) {
+              errorText = '无法读取错误详情';
+            }
+            throw new Error('HTTP ' + response.status + ': ' + errorText);
           }
 
           const data = await response.json();
@@ -739,6 +762,11 @@
           if (loadingEl) loadingEl.remove();
           log('❌ 请求失败: ' + e.message);
           updateStatus('错误', false);
+
+          // 如果是 API Key 或 Gateway 问题，提示用户
+          if (e.message.includes('未设置') || e.message.includes('getApiUrl')) {
+            log('💡 请点击 ⚙️ 按钮检查设置');
+          }
         }
         scrollToBottom();
         updateSendBtn();
