@@ -280,27 +280,20 @@
     body.dark #upload-btn { background: #3a3a3a; color: #aaa; }
 
     /* Log Panel */
-    .log-panel {
-      position: fixed;
-      bottom: 80px;
-      left: 10px;
-      right: 10px;
-      max-height: 200px;
+    #log {
+      max-height: 150px;
       overflow-y: auto;
-      background: rgba(0, 0, 0, 0.85);
-      color: #0f0;
+      background: #f8f8f8;
       padding: 10px;
-      margin: 0;
+      margin-top: 10px;
       border-radius: 8px;
-      font-family: 'Courier New', monospace;
-      font-size: 11px;
+      font-family: monospace;
+      font-size: 10px;
       white-space: pre-wrap;
       display: none;
-      z-index: 150;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
-    .log-panel.show { display: block; }
-    body.dark .log-panel { background: rgba(30, 30, 30, 0.95); }
+    #log.show { display: block; }
+    body.dark #log { background: #1a1a1a; }
 
     .hidden { display: none !important; }
 
@@ -370,11 +363,9 @@
         <button class="btn btn-secondary" onclick="app.hideSettings()">取消</button>
         <button class="btn btn-primary" onclick="app.saveSettings()">保存</button>
       </div>
+      <div id="log"></div>
     </div>
   </div>
-
-  <!-- 日志面板（独立于模态框） -->
-  <div id="log" class="log-panel"></div>
 
   <script src="config.js?v=20260227g"></script>
   <script>
@@ -705,11 +696,7 @@
         updateStatus('处理中...', true);
 
         const apiUrl = getApiUrl('/v1/chat/completions');
-        log('📡 Gateway URL: ' + (window.CONFIG.gatewayUrl || '未设置'));
-        log('📡 API Key: ' + (window.CONFIG.apiKey ? '已设置(' + window.CONFIG.apiKey.length + '字符)' : '未设置'));
         log('📡 请求 URL: ' + apiUrl);
-        log('📡 网络类型: ' + (navigator.connection?.effectiveType || '未知'));
-        log('📡 离线状态: ' + (navigator.onLine ? '在线' : '离线'));
 
         try {
           const response = await fetch(apiUrl, {
