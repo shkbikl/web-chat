@@ -1,21 +1,21 @@
 // OpenClaw Web Chat 配置
 
 const DEFAULT_CONFIG = {
-  // Gateway WebSocket 地址
-  gatewayUrl: 'ws://' + window.location.hostname + ':15823',
-  
+  // API Proxy HTTP 地址（Android WebView 需要 HTTP API）
+  gatewayUrl: 'http://43.110.16.63:4000',
+
   // API Key（Gateway Token）
   apiKey: '1ab581483035706a8289c7e5f2e8b00b',
-  
+
   // App 名称
   appName: 'OpenClaw Chat',
-  
+
   // 默认会话 ID
   defaultSession: 'default',
-  
+
   // 启用 Markdown
   enableMarkdown: true,
-  
+
   // 消息保留天数
   messageRetentionDays: 30,
 };
