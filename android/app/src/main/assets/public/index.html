@@ -815,30 +815,32 @@
           const contentType = response.headers.get('content-type');
           log('📡 响应类型: ' + contentType);
 
-          if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
+          // 尝试解析 JSON（即使 contentType 不正确）
+          const text = await response.text();
+          try {
+            const data = JSON.parse(text);
+            const reply = data.choices?.[0]?.message?.content || '无回复';
+
+            // 移除加载
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) loadingEl.remove();
+
+            // 添加 AI 回复
+            const aiMsg = {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: reply,
+              timestamp: new Date().toISOString()
+            };
+            messages.push(aiMsg);
+            saveMessages();
+            renderMessage(aiMsg);
+            updateStatus('就绪', true);
+            return;
+          } catch (parseError) {
             log('⚠️ 非 JSON 响应: ' + text.substring(0, 200));
             throw new Error('服务器返回非 JSON 响应');
           }
-
-          const data = await response.json();
-          const reply = data.choices?.[0]?.message?.content || '无回复';
-
-          // 移除加载
-          const loadingEl = document.getElementById(loadingId);
-          if (loadingEl) loadingEl.remove();
-
-          // 添加 AI 回复
-          const aiMsg = {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: reply,
-            timestamp: new Date().toISOString()
-          };
-          messages.push(aiMsg);
-          saveMessages();
-          renderMessage(aiMsg);
-          updateStatus('就绪', true);
 
         } catch (e) {
           const loadingEl = document.getElementById(loadingId);
