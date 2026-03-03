@@ -422,7 +422,7 @@
           const time = new Date().toLocaleTimeString();
           logEl.innerHTML += `[${time}] ${msg}\n`;
           logEl.scrollTop = logEl.scrollHeight;
-          logEl.classList.add('show');
+          // 不再自动显示，只记录日志
         }
         console.log('[WebChat]', msg);
       }
