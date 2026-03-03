@@ -678,7 +678,8 @@
         formData.append('file', file);
 
         try {
-          const response = await httpGet('/upload', {
+          // 上传文件必须用原生 fetch
+          const response = await fetch('/upload', {
             method: 'POST',
             headers: {
               'Authorization': 'Bearer ' + window.CONFIG.apiKey
