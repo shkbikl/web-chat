@@ -2,7 +2,7 @@
 
 const DEFAULT_CONFIG = {
   // Gateway WebSocket 地址
-  gatewayUrl: 'ws://' + window.location.hostname + ':15823',
+  gatewayUrl: 'http://43.110.16.63:3000',
   
   // API Key（Gateway Token）
   apiKey: '1ab581483035706a8289c7e5f2e8b00b',
