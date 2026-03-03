@@ -167,7 +167,7 @@
       justify-content: center;
       z-index: 200;
     }
-    .modal.active { display: flex; }
+    .modal.active { display: flex !important; }
     .modal-content {
       background: white;
       padding: 20px;
@@ -276,6 +276,16 @@
   <script>
     (function() {
       // ============================================
+      // GLOBAL STATE
+      // ============================================
+      const state = {
+        logs: [],  // 缓存日志，等 DOM 加载后输出
+        config: null,
+        messages: [],
+        initialized: false
+      };
+
+      // ============================================
       // CONFIG
       // ============================================
       const DEFAULT_CONFIG = {
@@ -284,82 +294,121 @@
       };
 
       function loadConfig() {
-        const saved = localStorage.getItem('openclaw-config');
-        if (saved) {
-          try {
-            return { ...DEFAULT_CONFIG, ...JSON.parse(saved) };
-          } catch (e) {}
+        try {
+          const saved = localStorage.getItem('openclaw-config');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            const config = { ...DEFAULT_CONFIG, ...parsed };
+            internalLog('📦 从 localStorage 加载配置');
+            return config;
+          } else {
+            internalLog('📦 使用默认配置');
+            return DEFAULT_CONFIG;
+          }
+        } catch (e) {
+          internalLog('⚠️ 加载配置失败: ' + e.message);
+          return DEFAULT_CONFIG;
         }
-        return DEFAULT_CONFIG;
       }
 
       function saveConfig(config) {
-        localStorage.setItem('openclaw-config', JSON.stringify(config));
+        try {
+          localStorage.setItem('openclaw-config', JSON.stringify(config));
+          internalLog('💾 配置已保存到 localStorage');
+          return true;
+        } catch (e) {
+          internalLog('❌ 保存配置失败: ' + e.message);
+          return false;
+        }
       }
 
-      const CONFIG = loadConfig();
-      log('📦 配置已加载');
-      log('   Gateway URL: ' + CONFIG.gatewayUrl);
-      log('   API Key: ' + (CONFIG.apiKey ? '已设置(' + CONFIG.apiKey.length + '字符)' : '未设置'));
-
       // ============================================
-      // LOGGING
+      // INTERNAL LOG (缓存日志)
       // ============================================
-      function log(msg) {
-        const logEl = document.getElementById('log');
-        if (logEl) {
-          const time = new Date().toLocaleTimeString();
-          logEl.textContent += '[' + time + '] ' + msg + '\n';
-          logEl.scrollTop = logEl.scrollHeight;
-        }
+      function internalLog(msg) {
+        const time = new Date().toLocaleTimeString();
+        const logEntry = '[' + time + '] ' + msg + '\n';
+        state.logs.push(logEntry);
         console.log('[WebChat]', msg);
+
+        // 如果 DOM 已加载，立即输出
+        if (state.initialized) {
+          flushLogs();
+        }
+      }
+
+      function flushLogs() {
+        const logEl = document.getElementById('log');
+        if (logEl && state.logs.length > 0) {
+          const allLogs = state.logs.join('');
+          logEl.textContent = allLogs;
+          logEl.scrollTop = logEl.scrollHeight;
+          state.logs = [];  // 清空缓存
+        }
       }
 
       // ============================================
       // DOM ELEMENTS
       // ============================================
-      const els = {
-        messages: document.getElementById('messages'),
-        emptyState: document.getElementById('empty-state'),
-        input: document.getElementById('message-input'),
-        sendBtn: document.getElementById('send-btn'),
-        statusText: document.getElementById('status-text'),
-        modal: document.getElementById('settings-modal'),
-        logBtn: document.getElementById('log-btn'),
-        settingsBtn: document.getElementById('settings-btn'),
-        cancelBtn: document.getElementById('cancel-btn'),
-        saveBtn: document.getElementById('save-btn'),
-        settingGateway: document.getElementById('setting-gateway'),
-        settingApikey: document.getElementById('setting-apikey'),
-        log: document.getElementById('log'),
-        chatContainer: document.getElementById('chat-container')
-      };
+      let els = {};
 
-      log('📦 DOM 元素已加载');
+      function initElements() {
+        els = {
+          messages: document.getElementById('messages'),
+          emptyState: document.getElementById('empty-state'),
+          input: document.getElementById('message-input'),
+          sendBtn: document.getElementById('send-btn'),
+          statusText: document.getElementById('status-text'),
+          modal: document.getElementById('settings-modal'),
+          logBtn: document.getElementById('log-btn'),
+          settingsBtn: document.getElementById('settings-btn'),
+          cancelBtn: document.getElementById('cancel-btn'),
+          saveBtn: document.getElementById('save-btn'),
+          settingGateway: document.getElementById('setting-gateway'),
+          settingApikey: document.getElementById('setting-apikey'),
+          log: document.getElementById('log'),
+          chatContainer: document.getElementById('chat-container')
+        };
+
+        // 验证所有元素
+        const missing = Object.keys(els).filter(key => !els[key]);
+        if (missing.length > 0) {
+          internalLog('⚠️ 缺失 DOM 元素: ' + missing.join(', '));
+        } else {
+          internalLog('✅ 所有 DOM 元素已加载');
+        }
+
+        // 输出缓存的日志
+        flushLogs();
+      }
 
       // ============================================
-      // STATE
+      // MESSAGES
       // ============================================
-      let messages = [];
-
       function loadMessages() {
-        const saved = localStorage.getItem('openclaw-messages');
-        if (saved) {
-          try {
-            messages = JSON.parse(saved);
-            messages.forEach(renderMessage);
-            if (messages.length && els.emptyState) {
+        try {
+          const saved = localStorage.getItem('openclaw-messages');
+          if (saved) {
+            state.messages = JSON.parse(saved);
+            state.messages.forEach(renderMessage);
+            if (state.messages.length && els.emptyState) {
               els.emptyState.classList.add('hidden');
             }
-            log('📦 已加载 ' + messages.length + ' 条历史消息');
-          } catch (e) {
-            log('⚠️ 加载历史消息失败: ' + e.message);
+            internalLog('📦 已加载 ' + state.messages.length + ' 条历史消息');
+          } else {
+            internalLog('📦 无历史消息');
           }
+        } catch (e) {
+          internalLog('⚠️ 加载历史消息失败: ' + e.message);
         }
       }
 
       function saveMessages() {
-        localStorage.setItem('openclaw-messages', JSON.stringify(messages));
+        try {
+          localStorage.setItem('openclaw-messages', JSON.stringify(state.messages));
+        } catch (e) {
+          internalLog('❌ 保存消息失败: ' + e.message);
+        }
       }
 
       // ============================================
@@ -445,11 +494,11 @@
       async function sendMessage() {
         const content = els.input ? els.input.value.trim() : '';
         if (!content) {
-          log('⚠️ 请输入内容');
+          internalLog('⚠️ 请输入内容');
           return;
         }
 
-        log('📤 发送消息: ' + content);
+        internalLog('📤 发送消息: ' + content);
 
         // 添加用户消息
         const userMsg = {
@@ -458,7 +507,7 @@
           content: content,
           timestamp: new Date().toISOString()
         };
-        messages.push(userMsg);
+        state.messages.push(userMsg);
         saveMessages();
         renderMessage(userMsg);
 
@@ -475,7 +524,7 @@
         updateStatus('处理中...', true);
 
         // 构建 API URL
-        let apiUrl = CONFIG.gatewayUrl;
+        let apiUrl = state.config.gatewayUrl;
         apiUrl = apiUrl.replace('ws://', 'http://');
         apiUrl = apiUrl.replace('wss://', 'https://');
         if (apiUrl.endsWith('/')) {
@@ -483,23 +532,23 @@
         }
         apiUrl = apiUrl + '/v1/chat/completions';
 
-        log('📡 请求 URL: ' + apiUrl);
-        log('📡 网络状态: ' + (navigator.onLine ? '在线' : '离线'));
-        log('📡 离线类型: ' + (navigator.connection?.effectiveType || '未知'));
+        internalLog('📡 请求 URL: ' + apiUrl);
+        internalLog('📡 网络状态: ' + (navigator.onLine ? '在线' : '离线'));
+        internalLog('📡 API Key: ' + (state.config.apiKey ? '已设置(' + state.config.apiKey.length + '字符)' : '未设置'));
 
         // 构建历史消息
-        const history = messages
+        const history = state.messages
           .filter(m => m.role === 'user' || m.role === 'assistant')
           .slice(-10)
           .map(m => ({ role: m.role, content: m.content }));
 
         try {
-          log('📡 开始请求...');
+          internalLog('📡 开始请求...');
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + CONFIG.apiKey
+              'Authorization': 'Bearer ' + state.config.apiKey
             },
             body: JSON.stringify({
               model: 'bailian:glm-4.7',
@@ -508,7 +557,7 @@
             })
           });
 
-          log('📡 响应状态: ' + response.status);
+          internalLog('📡 响应状态: ' + response.status);
 
           if (!response.ok) {
             let errorText = '';
@@ -529,7 +578,7 @@
           const data = await response.json();
           const reply = data.choices?.[0]?.message?.content || '无回复';
 
-          log('✅ 收到回复: ' + reply.substring(0, 50));
+          internalLog('✅ 收到回复: ' + reply.substring(0, 50));
 
           // 移除加载
           const loadingEl = document.getElementById(loadingId);
@@ -542,7 +591,7 @@
             content: reply,
             timestamp: new Date().toISOString()
           };
-          messages.push(aiMsg);
+          state.messages.push(aiMsg);
           saveMessages();
           renderMessage(aiMsg);
           updateStatus('就绪', true);
@@ -550,8 +599,8 @@
         } catch (e) {
           const loadingEl = document.getElementById(loadingId);
           if (loadingEl) loadingEl.remove();
-          log('❌ 请求失败: ' + e.message);
-          log('   堆栈: ' + e.stack);
+          internalLog('❌ 请求失败: ' + e.message);
+          internalLog('   堆栈: ' + e.stack);
           updateStatus('错误', false);
           alert('请求失败: ' + e.message);
         }
@@ -561,12 +610,20 @@
       // SETTINGS
       // ============================================
       function showSettings() {
-        if (els.settingGateway) els.settingGateway.value = CONFIG.gatewayUrl || '';
-        if (els.settingApikey) els.settingApikey.value = CONFIG.apiKey || '';
+        internalLog('⚙️ 打开设置');
+        if (els.settingGateway) {
+          els.settingGateway.value = state.config.gatewayUrl || '';
+          internalLog('   Gateway 字段: ' + state.config.gatewayUrl);
+        }
+        if (els.settingApikey) {
+          els.settingApikey.value = state.config.apiKey || '';
+          internalLog('   API Key 字段: ' + (state.config.apiKey ? '已设置' : '未设置'));
+        }
         if (els.modal) els.modal.classList.add('active');
       }
 
       function hideSettings() {
+        internalLog('⚙️ 关闭设置');
         if (els.modal) els.modal.classList.remove('active');
       }
 
@@ -574,26 +631,50 @@
         const gateway = els.settingGateway ? els.settingGateway.value.trim() : '';
         const apiKey = els.settingApikey ? els.settingApikey.value.trim() : '';
 
-        log('💾 保存设置...');
-        log('   Gateway: ' + gateway);
-        log('   API Key: ' + (apiKey ? '已设置(' + apiKey.length + '字符)' : '未设置'));
+        internalLog('💾 保存设置...');
+        internalLog('   Gateway: ' + gateway);
+        internalLog('   API Key: ' + (apiKey ? '已设置(' + apiKey.length + '字符)' : '未设置'));
 
+        // 检查 localStorage 是否可用
+        try {
+          localStorage.setItem('test', 'test');
+          localStorage.removeItem('test');
+          internalLog('✅ localStorage 可用');
+        } catch (e) {
+          internalLog('❌ localStorage 不可用: ' + e.message);
+          alert('浏览器不支持本地存储，配置无法保存！');
+          return;
+        }
+
+        // 更新配置
         if (gateway) {
-          CONFIG.gatewayUrl = gateway;
+          state.config.gatewayUrl = gateway;
+          internalLog('✅ Gateway 已更新');
         }
         if (apiKey) {
-          CONFIG.apiKey = apiKey;
+          state.config.apiKey = apiKey;
+          internalLog('✅ API Key 已更新');
         }
 
-        saveConfig(CONFIG);
-        hideSettings();
-        log('✅ 设置已保存');
+        // 保存到 localStorage
+        const saved = saveConfig(state.config);
 
-        // 验证
-        setTimeout(() => {
-          const saved = localStorage.getItem('openclaw-config');
-          log('📦 验证保存: ' + saved);
-        }, 100);
+        if (saved) {
+          // 验证保存
+          setTimeout(() => {
+            const verified = localStorage.getItem('openclaw-config');
+            internalLog('📦 验证保存: ' + (verified ? '成功' : '失败'));
+            if (verified) {
+              internalLog('   内容: ' + verified);
+            }
+          }, 100);
+
+          hideSettings();
+          internalLog('✅ 设置已保存');
+          alert('设置已保存！');
+        } else {
+          alert('保存失败，请重试！');
+        }
       }
 
       // ============================================
@@ -601,8 +682,14 @@
       // ============================================
       function toggleLog() {
         if (els.log) {
+          const isVisible = els.log.classList.contains('show');
           els.log.classList.toggle('show');
-          log(els.log.classList.contains('show') ? '📋 日志面板已显示' : '📋 日志面板已隐藏');
+          internalLog(els.log.classList.contains('show') ? '📋 日志面板已显示' : '📋 日志面板已隐藏');
+
+          // 如果显示，确保日志已输出
+          if (els.log.classList.contains('show')) {
+            flushLogs();
+          }
         }
       }
 
@@ -610,42 +697,61 @@
       // INITIALIZATION
       // ============================================
       function init() {
-        log('🚀 开始初始化...');
+        internalLog('🚀 开始初始化...');
 
-        // 加载历史消息
+        // 1. 初始化 DOM 元素
+        initElements();
+
+        // 2. 加载配置
+        state.config = loadConfig();
+        internalLog('📦 当前配置:');
+        internalLog('   Gateway URL: ' + state.config.gatewayUrl);
+        internalLog('   API Key: ' + (state.config.apiKey ? '已设置(' + state.config.apiKey.length + '字符)' : '未设置'));
+
+        // 3. 加载历史消息
         loadMessages();
 
-        // 绑定事件
+        // 4. 绑定事件
+        internalLog('🔗 绑定事件监听器...');
+
         if (els.input) {
           els.input.addEventListener('input', autoResize);
           els.input.addEventListener('keydown', handleEnter);
+          internalLog('✅ 输入框事件已绑定');
         }
 
         if (els.sendBtn) {
           els.sendBtn.addEventListener('click', sendMessage);
+          internalLog('✅ 发送按钮事件已绑定');
         }
 
         if (els.logBtn) {
           els.logBtn.addEventListener('click', toggleLog);
+          internalLog('✅ 日志按钮事件已绑定');
         }
 
         if (els.settingsBtn) {
           els.settingsBtn.addEventListener('click', showSettings);
+          internalLog('✅ 设置按钮事件已绑定');
         }
 
         if (els.cancelBtn) {
           els.cancelBtn.addEventListener('click', hideSettings);
+          internalLog('✅ 取消按钮事件已绑定');
         }
 
         if (els.saveBtn) {
           els.saveBtn.addEventListener('click', saveSettings);
+          internalLog('✅ 保存按钮事件已绑定');
         }
 
-        // 初始状态
+        // 5. 初始状态
         updateSendBtn();
         updateStatus('就绪', true);
 
-        log('✅ 初始化完成');
+        // 6. 标记已初始化
+        state.initialized = true;
+        internalLog('✅ 初始化完成');
       }
 
       // 启动
