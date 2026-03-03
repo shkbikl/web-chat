@@ -675,6 +675,16 @@
           return;
         }
 
+        // 详细诊断日志
+        log('🔍 ===== 诊断信息 =====');
+        log('🔍 User Agent: ' + navigator.userAgent);
+        log('🔍 当前 URL: ' + window.location.href);
+        log('🔍 当前协议: ' + window.location.protocol);
+        log('🔍 当前主机: ' + window.location.hostname);
+        log('🔍 当前端口: ' + window.location.port);
+        log('🔍 CONFIG.gatewayUrl: ' + window.CONFIG.gatewayUrl);
+        log('🔍 CONFIG.apiKey: ' + window.CONFIG.apiKey);
+
         // 上传文件
         let uploadedFiles = [];
         if (selectedFiles.length > 0) {
@@ -727,8 +737,30 @@
 
         const apiUrl = getApiUrl('/v1/chat/completions');
         log('📡 请求 URL: ' + apiUrl);
+        log('📡 完整请求配置:');
+        log('   URL: ' + apiUrl);
+        log('   Method: POST');
+        log('   Headers: Content-Type=application/json, Authorization=Bearer ' + window.CONFIG.apiKey.substring(0, 8) + '...');
+        log('   Body: { model: bailian:glm-4.7, messages: [...] }');
+
+        // 测试网络连接
+        log('🔍 测试网络连接...');
+        try {
+          const testResponse = await fetch(window.CONFIG.gatewayUrl.replace('http://', 'https://') + '/v1/models', {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer ' + window.CONFIG.apiKey
+            }
+          });
+          log('🔍 测试连接结果: ' + testResponse.status + ' ' + testResponse.statusText);
+        } catch (testError) {
+          log('🔍 测试连接失败: ' + testError.message);
+        }
 
         try {
+          log('📡 开始发送请求...');
+          const startTime = Date.now();
+          
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -742,13 +774,17 @@
             })
           });
 
-          log('📡 响应状态: ' + response.status);
+          const endTime = Date.now();
+          log('📡 响应收到: ' + (endTime - startTime) + 'ms');
+          log('📡 响应状态: ' + response.status + ' ' + response.statusText);
+          log('📡 响应头: ' + Array.from(response.headers.entries()).map(([k, v]) => `${k}=${v}`).join(', '));
 
           if (!response.ok) {
             // 尝试读取错误内容
             let errorText = '';
             try {
               const contentType = response.headers.get('content-type');
+              log('📡 错误响应类型: ' + contentType);
               if (contentType && contentType.includes('application/json')) {
                 const errorJson = await response.json();
                 errorText = JSON.stringify(errorJson);
@@ -760,7 +796,7 @@
                 }
               }
             } catch (e) {
-              errorText = '无法读取错误详情';
+              errorText = '无法读取错误详情: ' + e.message;
             }
             throw new Error('HTTP ' + response.status + (errorText ? ': ' + errorText : ''));
           }
@@ -775,6 +811,7 @@
           }
 
           const data = await response.json();
+          log('📡 解析成功, 数据: ' + JSON.stringify(data).substring(0, 200) + '...');
           const reply = data.choices?.[0]?.message?.content || '无回复';
 
           // 移除加载
@@ -796,9 +833,25 @@
         } catch (e) {
           const loadingEl = document.getElementById(loadingId);
           if (loadingEl) loadingEl.remove();
-          log('❌ 请求失败: ' + e.message);
+          
+          log('❌ ===== 错误详情 =====');
+          log('❌ 错误类型: ' + e.name);
+          log('❌ 错误消息: ' + e.message);
+          log('❌ 错误堆栈: ' + e.stack);
+          
+          // 检查常见错误类型
+          if (e.message.includes('Failed to fetch')) {
+            log('❌ 这是一个 "Failed to fetch" 错误');
+            log('❌ 可能原因:');
+            log('   1. CORS 问题（但 Android WebView 不应该有 CORS 限制）');
+            log('   2. 网络不可达');
+            log('   3. 服务器无响应');
+            log('   4. SSL/TLS 证书问题');
+          }
+          
           updateStatus('错误', false);
         }
+        log('🔍 ===== 诊断结束 =====');
         scrollToBottom();
         updateSendBtn();
       }
