@@ -376,8 +376,32 @@
   <!-- 日志面板（独立于模态框） -->
   <div id="log" class="log-panel"></div>
 
-  <script src="config.js?v=20260303a"></script>
+  <script src="config.js?v=20260303b"></script>
   <script>
+    // Capacitor HTTP 插件封装
+    async function httpGet(url, options = {}) {
+      // 检测是否在 Capacitor 环境
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Http) {
+        try {
+          const result = await window.Capacitor.Plugins.Http.request({
+            method: options.method || 'GET',
+            url: url,
+            headers: options.headers || {},
+            data: options.body ? JSON.parse(options.body) : null
+          });
+          return {
+            ok: result.status >= 200 && result.status < 300,
+            status: result.status,
+            json: async () => result.data,
+            text: async () => typeof result.data === 'string' ? result.data : JSON.stringify(result.data)
+          };
+        } catch (e) {
+          throw new Error(e.message || 'HTTP request failed');
+        }
+      }
+      // 降级到 fetch
+      return fetch(url, options);
+    }
     const app = (function() {
       let messages = [];
       let isReady = true;
@@ -427,7 +451,7 @@
         log('📡 检测: ' + apiUrl);
         
         try {
-          const response = await fetch(apiUrl, {
+          const response = await httpGet(apiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -647,7 +671,7 @@
         formData.append('file', file);
 
         try {
-          const response = await fetch('/upload', {
+          const response = await httpGet('/upload', {
             method: 'POST',
             headers: {
               'Authorization': 'Bearer ' + window.CONFIG.apiKey
@@ -745,7 +769,7 @@
         log('📡 离线状态: ' + (navigator.onLine ? '在线' : '离线'));
 
         try {
-          const response = await fetch(apiUrl, {
+          const response = await httpGet(apiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
