@@ -1,8 +1,8 @@
 // OpenClaw Web Chat 配置
 
 const DEFAULT_CONFIG = {
-  // Gateway WebSocket 地址
-  gatewayUrl: 'ws://' + window.location.hostname + ':15823',
+  // API Proxy 地址（支持 HTTP REST API）
+  gatewayUrl: 'http://' + window.location.hostname + ':4000',
   
   // API Key（Gateway Token）
   apiKey: '1ab581483035706a8289c7e5f2e8b00b',
