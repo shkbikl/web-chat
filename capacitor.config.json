@@ -3,7 +3,8 @@
   "appName": "OpenClaw Chat",
   "webDir": "www",
   "server": {
-    "androidScheme": "http",
+    "hostname": "openclaw.chat",
+    "androidScheme": "https",
     "cleartext": true,
     "allowNavigation": ["*"]
   },
