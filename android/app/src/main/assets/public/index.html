@@ -380,12 +380,13 @@
   <script>
     // Capacitor HTTP 插件封装
     async function httpGet(url, options = {}) {
-      // 检测是否在 Capacitor 环境
-      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        try {
-          const CapacitorHttp = window.Capacitor.Plugins.CapacitorHttp || window.Capacitor.Plugins.Http;
-          if (CapacitorHttp) {
-            const result = await CapacitorHttp.request({
+      // 检测是否在 Capacitor 环境且插件可用
+      const Capacitor = window.Capacitor;
+      if (Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+        const Http = Capacitor.Plugins && (Capacitor.Plugins.CapacitorHttp || Capacitor.Plugins.Http);
+        if (Http && Http.request) {
+          try {
+            const result = await Http.request({
               method: options.method || 'GET',
               url: url,
               headers: options.headers || {},
@@ -394,12 +395,15 @@
             return {
               ok: result.status >= 200 && result.status < 300,
               status: result.status,
+              headers: {
+                get: (name) => result.headers ? result.headers[name.toLowerCase()] : null
+              },
               json: async () => result.data,
               text: async () => typeof result.data === 'string' ? result.data : JSON.stringify(result.data)
             };
+          } catch (e) {
+            log('HTTP插件错误: ' + (e.message || JSON.stringify(e)));
           }
-        } catch (e) {
-          log('HTTP插件错误: ' + JSON.stringify(e));
         }
       }
       // 降级到 fetch
