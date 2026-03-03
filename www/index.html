@@ -280,20 +280,27 @@
     body.dark #upload-btn { background: #3a3a3a; color: #aaa; }
 
     /* Log Panel */
-    #log {
-      max-height: 150px;
+    .log-panel {
+      position: fixed;
+      bottom: 80px;
+      left: 10px;
+      right: 10px;
+      max-height: 200px;
       overflow-y: auto;
-      background: #f8f8f8;
+      background: rgba(0, 0, 0, 0.85);
+      color: #0f0;
       padding: 10px;
-      margin-top: 10px;
+      margin: 0;
       border-radius: 8px;
-      font-family: monospace;
-      font-size: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
       white-space: pre-wrap;
       display: none;
+      z-index: 150;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
-    #log.show { display: block; }
-    body.dark #log { background: #1a1a1a; }
+    .log-panel.show { display: block; }
+    body.dark .log-panel { background: rgba(30, 30, 30, 0.95); }
 
     .hidden { display: none !important; }
 
@@ -363,11 +370,13 @@
         <button class="btn btn-secondary" onclick="app.hideSettings()">取消</button>
         <button class="btn btn-primary" onclick="app.saveSettings()">保存</button>
       </div>
-      <div id="log"></div>
     </div>
   </div>
 
-  <script src="config.js?v=20260227g"></script>
+  <!-- 日志面板（独立于模态框） -->
+  <div id="log" class="log-panel"></div>
+
+  <script src="config.js?v=20260303a"></script>
   <script>
     const app = (function() {
       let messages = [];
@@ -407,8 +416,35 @@
         }
 
         updateSendBtn();
-        updateStatus('就绪', true);
-        log('✅ 初始化完成');
+        updateStatus('检测连接...', false);
+        log('🔄 正在检测服务器连接...');
+        checkConnection();
+      }
+
+      // 启动时检测连接
+      async function checkConnection() {
+        const apiUrl = getApiUrl('/v1/models');
+        log('📡 检测: ' + apiUrl);
+        
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer ' + window.CONFIG.apiKey
+            }
+          }, 5000);
+          
+          if (response.ok) {
+            log('✅ 服务器连接成功');
+            updateStatus('已连接', true);
+          } else {
+            log('⚠️ 服务器响应: ' + response.status);
+            updateStatus('异常(' + response.status + ')', false);
+          }
+        } catch (e) {
+          log('❌ 连接失败: ' + e.message);
+          updateStatus('连接失败', false);
+        }
       }
 
       // 键盘弹出适配
@@ -627,6 +663,16 @@
         return { name: file.name, error: true };
       }
 
+      // 获取完整的 API URL
+      function getApiUrl(path) {
+        const gateway = window.CONFIG.gatewayUrl || '';
+        // 将 ws:// 转换为 http://
+        const httpGateway = gateway.replace('ws://', 'http://').replace('wss://', 'https://');
+        // 移除末尾斜杠
+        const baseUrl = httpGateway.replace(/\/$/, '');
+        return baseUrl + path;
+      }
+
       // HTTP API 发送消息
       async function sendMessage() {
         const content = els.input ? els.input.value.trim() : '';
@@ -685,30 +731,19 @@
         renderMessage({ id: loadingId, role: 'assistant', content: '...', loading: true });
         updateStatus('处理中...', true);
 
+        const apiUrl = getApiUrl('/v1/chat/completions');
+        log('📡 Gateway URL: ' + (window.CONFIG.gatewayUrl || '未设置'));
+        log('📡 API Key: ' + (window.CONFIG.apiKey ? '已设置(' + window.CONFIG.apiKey.length + '字符)' : '未设置'));
+        log('📡 请求 URL: ' + apiUrl);
+        log('📡 网络类型: ' + (navigator.connection?.effectiveType || '未知'));
+        log('📡 离线状态: ' + (navigator.onLine ? '在线' : '离线'));
+
         try {
-          // 诊断：检查 window.getApiUrl 是否存在
-          if (typeof window.getApiUrl !== 'function') {
-            log('❌ window.getApiUrl 函数不存在');
-            throw new Error('getApiUrl 函数未定义');
-          }
-
-          const apiUrl = window.getApiUrl();
-          const apiKey = window.CONFIG.apiKey;
-
-          log('📡 Gateway URL: ' + window.CONFIG.gatewayUrl);
-          log('📡 请求 URL: ' + apiUrl);
-          log('📡 API Key: ' + (apiKey ? apiKey.substring(0, 8) + '...' : '未设置'));
-
-          if (!apiKey) {
-            log('❌ API Key 未设置，请打开设置配置');
-            throw new Error('API Key 未设置');
-          }
-
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + apiKey
+              'Authorization': 'Bearer ' + window.CONFIG.apiKey
             },
             body: JSON.stringify({
               model: 'bailian:glm-4.7',
@@ -720,6 +755,7 @@
           log('📡 响应状态: ' + response.status);
 
           if (!response.ok) {
+            // 尝试读取错误内容
             let errorText = '';
             try {
               const contentType = response.headers.get('content-type');
@@ -728,6 +764,7 @@
                 errorText = JSON.stringify(errorJson);
               } else {
                 errorText = await response.text();
+                // 只显示前 200 个字符
                 if (errorText.length > 200) {
                   errorText = errorText.substring(0, 200) + '...';
                 }
@@ -735,7 +772,16 @@
             } catch (e) {
               errorText = '无法读取错误详情';
             }
-            throw new Error('HTTP ' + response.status + ': ' + errorText);
+            throw new Error('HTTP ' + response.status + (errorText ? ': ' + errorText : ''));
+          }
+
+          const contentType = response.headers.get('content-type');
+          log('📡 响应类型: ' + contentType);
+
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            log('⚠️ 非 JSON 响应: ' + text.substring(0, 200));
+            throw new Error('服务器返回非 JSON 响应');
           }
 
           const data = await response.json();
@@ -762,11 +808,6 @@
           if (loadingEl) loadingEl.remove();
           log('❌ 请求失败: ' + e.message);
           updateStatus('错误', false);
-
-          // 如果是 API Key 或 Gateway 问题，提示用户
-          if (e.message.includes('未设置') || e.message.includes('getApiUrl')) {
-            log('💡 请点击 ⚙️ 按钮检查设置');
-          }
         }
         scrollToBottom();
         updateSendBtn();
@@ -933,43 +974,41 @@
       }
 
       function saveSettings() {
-        const g = document.getElementById('setting-gateway');
+        const gateway = document.getElementById('setting-gateway');
         const k = document.getElementById('setting-apikey');
-
-        // 清理并验证 gateway
-        if (g && g.value.trim()) {
-          const gateway = g.value.trim();
-          // 移除可能的引号、空格等
-          window.CONFIG.gatewayUrl = gateway.replace(/['"\s]/g, '');
-          log('📋 Gateway: ' + window.CONFIG.gatewayUrl);
+        
+        log('🔧 开始保存设置...');
+        log('   saveConfig 函数是否存在: ' + (typeof saveConfig !== 'undefined'));
+        log('   gateway 值: ' + (gateway ? gateway.value : 'N/A'));
+        log('   apikey 值: ' + (k ? k.value : 'N/A'));
+        
+        if (gateway && gateway.value.trim()) {
+          window.CONFIG.gatewayUrl = gateway.value.trim();
+          log('   ✅ gatewayUrl 已更新: ' + window.CONFIG.gatewayUrl);
         }
-
-        // 清理并验证 API Key
+        
         if (k && k.value.trim()) {
-          const key = k.value.trim();
-          // 移除可能的引号、空格、换行符
-          window.CONFIG.apiKey = key.replace(/['"\s\r\n]/g, '');
-          log('📋 API Key: ' + window.CONFIG.apiKey.substring(0, 8) + '...');
-          
-          // 验证 API Key 长度
-          if (window.CONFIG.apiKey.length < 10) {
-            log('⚠️ 警告: API Key 可能无效（太短）');
-          }
+          window.CONFIG.apiKey = k.value.trim();
+          log('   ✅ apiKey 已更新: ' + window.CONFIG.apiKey);
         }
-
-        // 保存到 localStorage
+        
         if (typeof saveConfig === 'function') {
-          try {
-            saveConfig(window.CONFIG);
-            log('✅ 设置已保存到 localStorage');
-          } catch (e) {
-            log('❌ 保存设置失败: ' + e.message);
-          }
+          saveConfig(window.CONFIG);
+          log('   ✅ saveConfig 执行成功');
         } else {
-          log('❌ saveConfig 函数不存在');
+          log('   ❌ saveConfig 函数不存在！');
+          alert('保存失败：配置函数未加载');
+          return;
         }
-
+        
         hideSettings();
+        log('💾 设置已保存');
+        
+        // 验证保存是否成功
+        setTimeout(() => {
+          const saved = localStorage.getItem('openclaw-config');
+          log('📦 localStorage 验证: ' + saved);
+        }, 100);
       }
 
       return {
@@ -984,9 +1023,25 @@
         toggleLog,
         showSettings,
         hideSettings,
-        saveSettings
+        saveSettings,
+        setupKeyboardAdapter
       };
+
     })();
+
+    // 暴露到全局作用域（用于 HTML onclick）
+    window.app = app;
+    window.toggleLog = () => app.toggleLog();
+    window.toggleDark = () => app.toggleDark();
+    window.clearChat = () => app.clearChat();
+    window.showSettings = () => app.showSettings();
+    window.hideSettings = () => app.hideSettings();
+    window.saveSettings = () => app.saveSettings();
+    window.sendMessage = () => app.sendMessage();
+    window.autoResize = (t) => app.autoResize(t);
+    window.handleEnter = (e) => app.handleEnter(e);
+    window.handleFileSelect = (e) => app.handleFileSelect(e);
+    window.removeFile = (i) => app.removeFile(i);
 
     document.addEventListener('DOMContentLoaded', () => app.init());
   </script>

@@ -416,8 +416,35 @@
         }
 
         updateSendBtn();
-        updateStatus('就绪', true);
-        log('✅ 初始化完成');
+        updateStatus('检测连接...', false);
+        log('🔄 正在检测服务器连接...');
+        checkConnection();
+      }
+
+      // 启动时检测连接
+      async function checkConnection() {
+        const apiUrl = getApiUrl('/v1/models');
+        log('📡 检测: ' + apiUrl);
+        
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer ' + window.CONFIG.apiKey
+            }
+          }, 5000);
+          
+          if (response.ok) {
+            log('✅ 服务器连接成功');
+            updateStatus('已连接', true);
+          } else {
+            log('⚠️ 服务器响应: ' + response.status);
+            updateStatus('异常(' + response.status + ')', false);
+          }
+        } catch (e) {
+          log('❌ 连接失败: ' + e.message);
+          updateStatus('连接失败', false);
+        }
       }
 
       // 键盘弹出适配
