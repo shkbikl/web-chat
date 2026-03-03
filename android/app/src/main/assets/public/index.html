@@ -208,10 +208,12 @@
       font-size: 11px;
       white-space: pre-wrap;
       display: none;
-      z-index: 150;
+      z-index: 300;
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
-    .log-panel.show { display: block !important; }
+    .log-panel.show {
+      display: block !important;
+    }
 
     .hidden { display: none !important; }
 
@@ -339,8 +341,14 @@
 
       function flushLogs() {
         const logEl = document.getElementById('log');
-        if (logEl && state.logs.length > 0) {
+        if (!logEl) {
+          console.log('[WebChat] flushLogs: 日志元素不存在');
+          return;
+        }
+
+        if (state.logs.length > 0) {
           const allLogs = state.logs.join('');
+          console.log('[WebChat] flushLogs: 输出 ' + state.logs.length + ' 条日志');
           logEl.textContent = allLogs;
           logEl.scrollTop = logEl.scrollHeight;
           state.logs = [];  // 清空缓存
@@ -376,6 +384,15 @@
           internalLog('⚠️ 缺失 DOM 元素: ' + missing.join(', '));
         } else {
           internalLog('✅ 所有 DOM 元素已加载');
+          internalLog('   日志元素: ' + (els.log ? '存在' : '不存在'));
+          internalLog('   日志按钮: ' + (els.logBtn ? '存在' : '不存在'));
+        }
+
+        // 验证日志样式
+        if (els.log) {
+          const computedStyle = window.getComputedStyle(els.log);
+          internalLog('   日志初始 display: ' + computedStyle.display);
+          internalLog('   日志 z-index: ' + computedStyle.zIndex);
         }
 
         // 输出缓存的日志
@@ -681,15 +698,24 @@
       // TOGGLES
       // ============================================
       function toggleLog() {
-        if (els.log) {
-          const isVisible = els.log.classList.contains('show');
-          els.log.classList.toggle('show');
-          internalLog(els.log.classList.contains('show') ? '📋 日志面板已显示' : '📋 日志面板已隐藏');
+        internalLog('📋 点击日志按钮');
+        if (!els.log) {
+          internalLog('❌ 日志元素未找到！');
+          return;
+        }
 
-          // 如果显示，确保日志已输出
-          if (els.log.classList.contains('show')) {
-            flushLogs();
-          }
+        const isVisible = els.log.classList.contains('show');
+        internalLog('📋 当前状态: ' + (isVisible ? '已显示' : '已隐藏'));
+
+        els.log.classList.toggle('show');
+        const newState = els.log.classList.contains('show');
+        internalLog('📋 新状态: ' + (newState ? '已显示' : '已隐藏'));
+
+        // 如果显示，确保日志已输出
+        if (newState) {
+          internalLog('📋 正在刷新日志内容...');
+          flushLogs();
+          internalLog('📋 日志条数: ' + state.logs.length);
         }
       }
 
