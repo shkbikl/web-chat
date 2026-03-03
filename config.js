@@ -1,8 +1,8 @@
 // OpenClaw Web Chat 配置
 
 const DEFAULT_CONFIG = {
-  // API Proxy 地址（支持 HTTP REST API）
-  gatewayUrl: 'http://' + window.location.hostname + ':4000',
+  // API Proxy 地址（留空自动检测）
+  gatewayUrl: 'http://43.110.16.63:3000',
   
   // API Key（Gateway Token）
   apiKey: '1ab581483035706a8289c7e5f2e8b00b',
