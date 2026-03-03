@@ -369,6 +369,30 @@
 
   <script src="config.js?v=20260227g"></script>
   <script>
+    // 默认配置
+    window.CONFIG = {
+      gatewayUrl: 'http://43.110.16.63:15823',
+      apiKey: '1ab581483035706a8289c7e5f2e8b00b'
+    };
+
+    // 加载配置
+    function loadConfig() {
+      const saved = localStorage.getItem('openclaw-config');
+      if (saved) {
+        try {
+          const config = JSON.parse(saved);
+          window.CONFIG = { ...window.CONFIG, ...config };
+        } catch (e) {
+          console.error('加载配置失败:', e);
+        }
+      }
+    }
+
+    // 保存配置
+    function saveConfig(config) {
+      localStorage.setItem('openclaw-config', JSON.stringify(config));
+    }
+
     const app = (function() {
       let messages = [];
       let isReady = true;
@@ -388,6 +412,8 @@
       }
 
       function init() {
+        loadConfig(); // 加载配置
+
         els.messages = document.getElementById('messages');
         els.emptyState = document.getElementById('empty-state');
         els.input = document.getElementById('message-input');
@@ -398,6 +424,10 @@
         els.fileInput = document.getElementById('file-input');
         els.footer = document.querySelector('footer');
         els.chatContainer = document.getElementById('chat-container');
+
+        log('📡 当前配置:');
+        log('   API URL: ' + window.CONFIG.gatewayUrl);
+        log('   API Key: ' + window.CONFIG.apiKey.substring(0, 8) + '...');
 
         loadMessages();
         updateSettingsUI();
