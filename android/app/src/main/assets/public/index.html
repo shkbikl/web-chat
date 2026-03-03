@@ -3,9 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <!-- 移动端键盘适配 -->
+  <meta name="format-detection" content="telephone=no">
+  <meta name="msapplication-tap-highlight" content="no">
   <title>OpenClaw Chat</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { height: 100%; }
     html, body {
       height: 100%;
       overflow: hidden;
@@ -21,9 +27,11 @@
       flex-direction: column;
       width: 100%;
       height: 100%;
+      /* iOS 安全区域 */
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
 
+    /* Header */
     header {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -53,9 +61,10 @@
       cursor: pointer;
       font-size: 16px;
       color: white;
-      min-width: 36px;
     }
+    .btn-icon:active { background: rgba(255,255,255,0.2); }
 
+    /* Chat Container */
     #chat-container {
       flex: 1;
       overflow-y: auto;
@@ -74,7 +83,10 @@
       text-align: center;
     }
     .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state-text { font-size: 16px; }
+    .empty-state-hint { font-size: 13px; margin-top: 8px; opacity: 0.7; }
 
+    /* Messages */
     .message { display: flex; margin-bottom: 12px; padding: 0 4px; }
     .message.user { justify-content: flex-end; }
     .message-content {
@@ -96,6 +108,14 @@
       border-bottom-left-radius: 4px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
+    .message.system .message-content {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .message.loading .message-content {
+      background: #f0f0f0;
+      color: #666;
+    }
 
     .avatar {
       width: 28px;
@@ -112,7 +132,30 @@
 
     .message-time { font-size: 10px; opacity: 0.6; margin-top: 4px; text-align: right; }
     .message-body { white-space: pre-wrap; word-wrap: break-word; }
+    .message-body img.message-image {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 8px;
+      margin-top: 8px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .message-body img.message-image:hover {
+      transform: scale(1.02);
+    }
 
+    .file-attachment {
+      background: rgba(0,0,0,0.05);
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    /* Input Area */
     footer {
       background: white;
       border-top: 1px solid #e0e0e0;
@@ -123,6 +166,15 @@
       left: 0;
       right: 0;
       z-index: 100;
+      transition: transform 0.15s ease-out, bottom 0.15s ease-out;
+      will-change: transform, bottom;
+    }
+
+    /* 键盘弹出时，footer 跟随键盘 */
+    footer.keyboard-active {
+      position: fixed;
+      bottom: 0;
+      z-index: 1000;
     }
     .input-container {
       display: flex;
@@ -131,6 +183,27 @@
       max-width: 800px;
       margin: 0 auto;
     }
+    .input-wrapper { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+    .file-preview {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      max-height: 60px;
+      overflow-x: auto;
+    }
+    .file-preview-item {
+      background: #f0f0f0;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .file-preview-item .remove { cursor: pointer; color: #e74c3c; font-weight: bold; font-size: 14px; }
+
     #message-input {
       flex: 1;
       padding: 10px 14px;
@@ -142,6 +215,9 @@
       max-height: 100px;
       font-family: inherit;
     }
+    #message-input:focus { border-color: #667eea; }
+
+    .button-group { display: flex; gap: 6px; }
     #send-btn {
       width: 40px;
       height: 40px;
@@ -156,40 +232,52 @@
       flex-shrink: 0;
     }
     #send-btn:disabled { background: #ccc; }
+    #send-btn:active { transform: scale(0.95); }
 
-    /* Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
+    #upload-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: #f0f0f0;
+      color: #666;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 200;
+      font-size: 18px;
+      flex-shrink: 0;
     }
-    .modal.active { display: flex !important; }
-    .modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 360px;
-    }
+    #upload-btn:active { background: #e0e0e0; }
+
+    .footer-text { text-align: center; font-size: 10px; color: #bbb; margin-top: 6px; }
+
+    /* Modal */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 200; }
+    .modal.active { display: flex; }
+    .modal-content { background: white; padding: 20px; border-radius: 16px; width: 90%; max-width: 360px; max-height: 80vh; overflow-y: auto; }
     .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
     .form-group { margin-bottom: 14px; }
-    .form-label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
-    .form-input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 14px;
-    }
+    .form-label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #333; }
+    .form-input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
     .form-input:focus { border-color: #667eea; outline: none; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
     .btn { padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; border: none; }
     .btn-secondary { background: #f0f0f0; color: #333; }
     .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+
+    /* Dark Mode */
+    body.dark { background: #1a1a1a; color: #e0e0e0; }
+    body.dark header { background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); }
+    body.dark footer { background: #2d2d2d; border-color: #404040; }
+    body.dark #message-input { background: #3a3a3a; border-color: #505050; color: #e0e0e0; }
+    body.dark .message.assistant .message-content { background: #3a3a3a; color: #e0e0e0; }
+    body.dark .modal-content { background: #2d2d2d; }
+    body.dark .form-label { color: #e0e0e0; }
+    body.dark .form-input { background: #3a3a3a; border-color: #505050; color: #e0e0e0; }
+    body.dark .btn-secondary { background: #3a3a3a; color: #e0e0e0; }
+    body.dark .file-preview-item { background: #3a3a3a; }
+    body.dark #upload-btn { background: #3a3a3a; color: #aaa; }
 
     /* Log Panel */
     .log-panel {
@@ -208,15 +296,15 @@
       font-size: 11px;
       white-space: pre-wrap;
       display: none;
-      z-index: 300;
+      z-index: 150;
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
-    .log-panel.show {
-      display: block !important;
-    }
+    .log-panel.show { display: block; }
+    body.dark .log-panel { background: rgba(30, 30, 30, 0.95); }
 
     .hidden { display: none !important; }
 
+    /* Loading animation */
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
@@ -234,25 +322,37 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn-icon" id="log-btn">📋</button>
-      <button class="btn-icon" id="settings-btn">⚙️</button>
+      <button class="btn-icon" onclick="app.toggleLog()">📋</button>
+      <button class="btn-icon" onclick="app.toggleDark()">🌙</button>
+      <button class="btn-icon" onclick="app.clearChat()">🗑️</button>
+      <button class="btn-icon" onclick="app.showSettings()">⚙️</button>
     </div>
   </header>
 
   <div id="chat-container">
     <div class="empty-state" id="empty-state">
       <div class="empty-state-icon">💬</div>
+      <div class="empty-state-text">开始对话吧</div>
+      <div class="empty-state-hint">输入消息或上传文件</div>
     </div>
     <div id="messages"></div>
   </div>
 
   <footer>
     <div class="input-container">
-      <textarea id="message-input" rows="1" placeholder="输入消息..."></textarea>
-      <button id="send-btn" disabled>
-        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-      </button>
+      <div class="input-wrapper">
+        <div class="file-preview" id="file-preview"></div>
+        <textarea id="message-input" rows="1" placeholder="输入消息..." oninput="app.autoResize(this)" onkeydown="app.handleEnter(event)"></textarea>
+      </div>
+      <div class="button-group">
+        <button id="upload-btn" onclick="document.getElementById('file-input').click()" title="上传文件">📎</button>
+        <input type="file" id="file-input" class="hidden" onchange="app.handleFileSelect(event)" multiple accept="image/*,.pdf,.doc,.docx,.txt,.md,.json,.csv">
+        <button id="send-btn" onclick="app.sendMessage()" disabled>
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </button>
+      </div>
     </div>
+    <div class="footer-text">Powered by OpenClaw</div>
   </footer>
 
   <div class="modal" id="settings-modal">
@@ -260,279 +360,370 @@
       <div class="modal-title">⚙️ 设置</div>
       <div class="form-group">
         <label class="form-label">API 地址</label>
-        <input type="text" id="setting-gateway" class="form-input" placeholder="http://...">
+        <input type="text" id="setting-gateway" class="form-input" placeholder="留空使用默认">
       </div>
       <div class="form-group">
         <label class="form-label">API Key</label>
         <input type="password" id="setting-apikey" class="form-input" placeholder="sk-...">
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="cancel-btn">取消</button>
-        <button class="btn btn-primary" id="save-btn">保存</button>
+        <button class="btn btn-secondary" onclick="app.hideSettings()">取消</button>
+        <button class="btn btn-primary" onclick="app.saveSettings()">保存</button>
       </div>
     </div>
   </div>
 
+  <!-- 日志面板（独立于模态框） -->
   <div id="log" class="log-panel"></div>
 
+  <script src="config.js?v=20260303a"></script>
   <script>
-    (function() {
-      // ============================================
-      // GLOBAL STATE
-      // ============================================
-      const state = {
-        logs: [],  // 缓存日志，等 DOM 加载后输出
-        config: null,
-        messages: [],
-        initialized: false
-      };
+    const app = (function() {
+      let messages = [];
+      let isReady = true;
+      let selectedFiles = [];
 
-      // ============================================
-      // CONFIG
-      // ============================================
-      const DEFAULT_CONFIG = {
-        gatewayUrl: 'http://43.110.16.63:15823',
-        apiKey: '1ab581483035706a8289c7e5f2e8b00b'
-      };
+      const els = {};
 
-      function loadConfig() {
-        try {
-          const saved = localStorage.getItem('openclaw-config');
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            const config = { ...DEFAULT_CONFIG, ...parsed };
-            internalLog('📦 从 localStorage 加载配置');
-            return config;
-          } else {
-            internalLog('📦 使用默认配置');
-            return DEFAULT_CONFIG;
-          }
-        } catch (e) {
-          internalLog('⚠️ 加载配置失败: ' + e.message);
-          return DEFAULT_CONFIG;
-        }
-      }
-
-      function saveConfig(config) {
-        try {
-          localStorage.setItem('openclaw-config', JSON.stringify(config));
-          internalLog('💾 配置已保存到 localStorage');
-          return true;
-        } catch (e) {
-          internalLog('❌ 保存配置失败: ' + e.message);
-          return false;
-        }
-      }
-
-      // ============================================
-      // INTERNAL LOG (缓存日志)
-      // ============================================
-      function internalLog(msg) {
-        const time = new Date().toLocaleTimeString();
-        const logEntry = '[' + time + '] ' + msg + '\n';
-        state.logs.push(logEntry);
-        console.log('[WebChat]', msg);
-
-        // 如果 DOM 已加载，立即输出
-        if (state.initialized) {
-          flushLogs();
-        }
-      }
-
-      function flushLogs() {
+      function log(msg) {
         const logEl = document.getElementById('log');
-        if (!logEl) {
-          console.log('[WebChat] flushLogs: 日志元素不存在');
-          return;
-        }
-
-        if (state.logs.length > 0) {
-          const allLogs = state.logs.join('');
-          console.log('[WebChat] flushLogs: 输出 ' + state.logs.length + ' 条日志');
-          logEl.textContent = allLogs;
+        if (logEl) {
+          const time = new Date().toLocaleTimeString();
+          logEl.innerHTML += `[${time}] ${msg}\n`;
           logEl.scrollTop = logEl.scrollHeight;
-          state.logs = [];  // 清空缓存
+          logEl.classList.add('show');
         }
+        console.log('[WebChat]', msg);
       }
 
-      // ============================================
-      // DOM ELEMENTS
-      // ============================================
-      let els = {};
+      function init() {
+        els.messages = document.getElementById('messages');
+        els.emptyState = document.getElementById('empty-state');
+        els.input = document.getElementById('message-input');
+        els.sendBtn = document.getElementById('send-btn');
+        els.statusText = document.getElementById('status-text');
+        els.modal = document.getElementById('settings-modal');
+        els.filePreview = document.getElementById('file-preview');
+        els.fileInput = document.getElementById('file-input');
+        els.footer = document.querySelector('footer');
+        els.chatContainer = document.getElementById('chat-container');
 
-      function initElements() {
-        els = {
-          messages: document.getElementById('messages'),
-          emptyState: document.getElementById('empty-state'),
-          input: document.getElementById('message-input'),
-          sendBtn: document.getElementById('send-btn'),
-          statusText: document.getElementById('status-text'),
-          modal: document.getElementById('settings-modal'),
-          logBtn: document.getElementById('log-btn'),
-          settingsBtn: document.getElementById('settings-btn'),
-          cancelBtn: document.getElementById('cancel-btn'),
-          saveBtn: document.getElementById('save-btn'),
-          settingGateway: document.getElementById('setting-gateway'),
-          settingApikey: document.getElementById('setting-apikey'),
-          log: document.getElementById('log'),
-          chatContainer: document.getElementById('chat-container')
-        };
+        loadMessages();
+        updateSettingsUI();
 
-        // 验证所有元素
-        const missing = Object.keys(els).filter(key => !els[key]);
-        if (missing.length > 0) {
-          internalLog('⚠️ 缺失 DOM 元素: ' + missing.join(', '));
-        } else {
-          internalLog('✅ 所有 DOM 元素已加载');
-          internalLog('   日志元素: ' + (els.log ? '存在' : '不存在'));
-          internalLog('   日志按钮: ' + (els.logBtn ? '存在' : '不存在'));
+        if (localStorage.getItem('dark-mode') === 'true') {
+          document.body.classList.add('dark');
         }
 
-        // 验证日志样式
-        if (els.log) {
-          const computedStyle = window.getComputedStyle(els.log);
-          internalLog('   日志初始 display: ' + computedStyle.display);
-          internalLog('   日志 z-index: ' + computedStyle.zIndex);
-        }
-
-        // 输出缓存的日志
-        flushLogs();
+        updateSendBtn();
+        updateStatus('检测连接...', false);
+        log('🔄 正在检测服务器连接...');
+        checkConnection();
       }
 
-      // ============================================
-      // MESSAGES
-      // ============================================
-      function loadMessages() {
+      // 启动时检测连接
+      async function checkConnection() {
+        const apiUrl = getApiUrl('/v1/models');
+        log('📡 检测: ' + apiUrl);
+        
         try {
-          const saved = localStorage.getItem('openclaw-messages');
-          if (saved) {
-            state.messages = JSON.parse(saved);
-            state.messages.forEach(renderMessage);
-            if (state.messages.length && els.emptyState) {
-              els.emptyState.classList.add('hidden');
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer ' + window.CONFIG.apiKey
             }
-            internalLog('📦 已加载 ' + state.messages.length + ' 条历史消息');
+          }, 5000);
+          
+          if (response.ok) {
+            log('✅ 服务器连接成功');
+            updateStatus('已连接', true);
           } else {
-            internalLog('📦 无历史消息');
+            log('⚠️ 服务器响应: ' + response.status);
+            updateStatus('异常(' + response.status + ')', false);
           }
         } catch (e) {
-          internalLog('⚠️ 加载历史消息失败: ' + e.message);
+          log('❌ 连接失败: ' + e.message);
+          updateStatus('连接失败', false);
         }
       }
 
-      function saveMessages() {
+      // 键盘弹出适配
+      function setupKeyboardAdapter() {
+        const input = els.input;
+        const footer = els.footer;
+        const chatContainer = els.chatContainer;
+        if (!input || !footer || !chatContainer) return;
+
+        // 检测是否为 iOS
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        // 使用 visualViewport API（推荐，Android Chrome 支持）
+        if (window.visualViewport) {
+          let lastHeight = window.visualViewport.height;
+          let isKeyboardVisible = false;
+
+          function handleViewportChange() {
+            const currentHeight = window.visualViewport.height;
+            const windowHeight = window.outerHeight || window.screen.height;
+            const heightDiff = windowHeight - currentHeight;
+
+            // 键盘高度阈值（超过 100px 认为键盘弹出）
+            const keyboardHeight = Math.max(0, heightDiff);
+
+            if (keyboardHeight > 100) {
+              // 键盘弹出
+              isKeyboardVisible = true;
+
+              // 设置 footer 固定在可视区域底部
+              footer.style.position = 'fixed';
+              footer.style.top = 'auto';
+              footer.style.bottom = '0';
+              footer.style.transform = 'translateY(-' + keyboardHeight + 'px)';
+              footer.style.left = '0';
+              footer.style.right = '0';
+              footer.style.width = '100%';
+              footer.style.zIndex = '1000';
+
+              // 调整聊天区域，留出键盘空间
+              chatContainer.style.paddingBottom = (80 + keyboardHeight) + 'px';
+
+              // 滚动到底部
+              requestAnimationFrame(() => {
+                scrollToBottom();
+              });
+
+              log('⌨️ 键盘弹出: ' + keyboardHeight + 'px');
+            } else {
+              // 键盘收起
+              if (isKeyboardVisible) {
+                isKeyboardVisible = false;
+                footer.style.position = 'fixed';
+                footer.style.transform = 'none';
+                footer.style.bottom = '0';
+                chatContainer.style.paddingBottom = '80px';
+                log('⌨️ 键盘收起');
+              }
+            }
+
+            lastHeight = currentHeight;
+          }
+
+          // 监听 resize 和 scroll
+          window.visualViewport.addEventListener('resize', handleViewportChange);
+          window.visualViewport.addEventListener('scroll', handleViewportChange);
+        }
+
+        // iOS 特殊处理 - 使用 scrollIntoView
+        if (isIOS) {
+          input.addEventListener('focus', function() {
+            // iOS 需要延迟处理
+            setTimeout(() => {
+              // 滚动到输入框位置
+              input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+              // iOS 有时需要手动调整
+              const rect = input.getBoundingClientRect();
+              const viewportHeight = window.innerHeight;
+              const offset = viewportHeight - rect.bottom;
+
+              if (offset < 50) {
+                chatContainer.scrollTop += (50 - offset);
+              }
+            }, 300);
+          });
+        }
+
+        // 通用处理：输入框焦点时滚动
+        input.addEventListener('focus', function() {
+          setTimeout(() => {
+            scrollToBottom();
+            // 确保输入框在可视区域内
+            const rect = input.getBoundingClientRect();
+            if (rect.bottom > window.innerHeight - 100) {
+              input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 100);
+        });
+
+        // 处理 blur，收起键盘后恢复
+        input.addEventListener('blur', function() {
+          setTimeout(() => {
+            if (footer.style.transform && footer.style.transform !== 'none') {
+              footer.style.transform = 'none';
+              chatContainer.style.paddingBottom = '80px';
+            }
+          }, 100);
+        });
+
+        // 备用方案：传统 resize 事件（兼容老浏览器）
+        if (!window.visualViewport) {
+          let originalHeight = window.innerHeight;
+
+          window.addEventListener('resize', function() {
+            const currentHeight = window.innerHeight;
+            const heightDiff = originalHeight - currentHeight;
+
+            if (heightDiff > 150) {
+              footer.style.position = 'fixed';
+              footer.style.bottom = heightDiff + 'px';
+              chatContainer.style.paddingBottom = (80 + heightDiff) + 'px';
+              setTimeout(scrollToBottom, 100);
+            } else {
+              footer.style.position = 'fixed';
+              footer.style.bottom = '0';
+              chatContainer.style.paddingBottom = '80px';
+            }
+          });
+        }
+
+        // 阻止页面滚动穿透
+        document.body.addEventListener('touchmove', function(e) {
+          if (document.activeElement === input) {
+            const scrollTop = chatContainer.scrollTop;
+            const scrollHeight = chatContainer.scrollHeight;
+            const clientHeight = chatContainer.clientHeight;
+
+            // 允许聊天区域滚动
+            if (scrollTop === 0 && e.touches[0].clientY > 0) {
+              // 在顶部时允许下拉
+            } else if (scrollTop + clientHeight >= scrollHeight) {
+              // 在底部时允许上拉
+            }
+          }
+        }, { passive: true });
+      }
+
+      function handleFileSelect(event) {
+        const files = Array.from(event.target.files);
+        if (!files.length) return;
+
+        log('📎 选择了 ' + files.length + ' 个文件');
+
+        files.forEach(file => {
+          if (file.size > 10 * 1024 * 1024) {
+            alert('文件 "' + file.name + '" 超过 10MB');
+            return;
+          }
+          selectedFiles.push(file);
+        });
+
+        renderFilePreview();
+        updateSendBtn();
+        event.target.value = '';
+      }
+
+      function renderFilePreview() {
+        if (!els.filePreview) return;
+
+        els.filePreview.innerHTML = selectedFiles.map((file, index) => {
+          const size = file.size > 1024 * 1024
+            ? (file.size / 1024 / 1024).toFixed(1) + ' MB'
+            : (file.size / 1024).toFixed(0) + ' KB';
+          return `
+            <div class="file-preview-item">
+              <span>📄 ${file.name} (${size})</span>
+              <span class="remove" onclick="app.removeFile(${index})">×</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        renderFilePreview();
+        updateSendBtn();
+      }
+
+      async function uploadFile(file) {
+        log('📎 上传：' + file.name);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
         try {
-          localStorage.setItem('openclaw-messages', JSON.stringify(state.messages));
+          const response = await fetch('/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + window.CONFIG.apiKey
+            },
+            body: formData
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            log('✅ 已保存：' + data.path);
+            return { name: file.name, path: data.path, size: file.size };
+          } else {
+            log('❌ 上传失败：' + response.status);
+          }
         } catch (e) {
-          internalLog('❌ 保存消息失败: ' + e.message);
+          log('❌ 上传错误：' + e.message);
         }
+
+        return { name: file.name, error: true };
       }
 
-      // ============================================
-      // RENDERING
-      // ============================================
-      function renderMessage(msg) {
-        if (els.emptyState) els.emptyState.classList.add('hidden');
-        if (els.messages) els.messages.classList.remove('hidden');
-
-        const div = document.createElement('div');
-        div.className = 'message ' + msg.role;
-        div.id = msg.id;
-
-        const time = new Date(msg.timestamp);
-        const timeStr = time.getHours().toString().padStart(2, '0') + ':' +
-                        time.getMinutes().toString().padStart(2, '0');
-        const avatar = msg.role === 'user' ? '👤' : '🤖';
-
-        div.innerHTML = msg.role === 'user' ? `
-          <div class="message-content">
-            <div class="message-body">${escapeHtml(msg.content)}</div>
-            <div class="message-time">${timeStr}</div>
-          </div>
-          <div class="avatar">${avatar}</div>
-        ` : `
-          <div class="avatar">${avatar}</div>
-          <div class="message-content">
-            <div class="message-body ${msg.loading ? 'loading-dots' : ''}">${escapeHtml(msg.content)}</div>
-            <div class="message-time">${timeStr}</div>
-          </div>
-        `;
-
-        if (els.messages) els.messages.appendChild(div);
-        scrollToBottom();
+      // 获取完整的 API URL
+      function getApiUrl(path) {
+        const gateway = window.CONFIG.gatewayUrl || '';
+        // 将 ws:// 转换为 http://
+        const httpGateway = gateway.replace('ws://', 'http://').replace('wss://', 'https://');
+        // 移除末尾斜杠
+        const baseUrl = httpGateway.replace(/\/$/, '');
+        return baseUrl + path;
       }
 
-      function escapeHtml(text) {
-        const d = document.createElement('div');
-        d.textContent = text || '';
-        return d.innerHTML;
-      }
-
-      function scrollToBottom() {
-        if (els.chatContainer) {
-          els.chatContainer.scrollTop = els.chatContainer.scrollHeight;
-        }
-      }
-
-      function updateStatus(text, ok) {
-        if (els.statusText) {
-          els.statusText.textContent = text;
-          els.statusText.className = 'status ' + (ok ? 'connected' : 'disconnected');
-        }
-      }
-
-      // ============================================
-      // INPUT HANDLING
-      // ============================================
-      function autoResize() {
-        if (els.input) {
-          els.input.style.height = 'auto';
-          els.input.style.height = Math.min(els.input.scrollHeight, 100) + 'px';
-          updateSendBtn();
-        }
-      }
-
-      function updateSendBtn() {
-        if (els.sendBtn && els.input) {
-          els.sendBtn.disabled = !els.input.value.trim();
-        }
-      }
-
-      function handleEnter(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-        }
-      }
-
-      // ============================================
-      // SEND MESSAGE
-      // ============================================
+      // HTTP API 发送消息
       async function sendMessage() {
         const content = els.input ? els.input.value.trim() : '';
-        if (!content) {
-          internalLog('⚠️ 请输入内容');
+        if (!content && selectedFiles.length === 0) {
+          log('⚠️ 请输入内容');
           return;
         }
 
-        internalLog('📤 发送消息: ' + content);
+        // 上传文件
+        let uploadedFiles = [];
+        if (selectedFiles.length > 0) {
+          log('📤 上传文件...');
+          for (const file of selectedFiles) {
+            const result = await uploadFile(file);
+            if (!result.error) {
+              uploadedFiles.push(result);
+            }
+          }
+        }
+
+        // 构建消息内容
+        let fullContent = content;
+        if (uploadedFiles.length > 0) {
+          const fileList = uploadedFiles.map(f => `[文件: ${f.name}]`).join(' ');
+          fullContent = content + '\n' + fileList;
+        }
+
+        // 构建历史消息
+        const history = messages
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .slice(-10)
+          .map(m => ({ role: m.role, content: m.content }));
 
         // 添加用户消息
         const userMsg = {
           id: Date.now().toString(),
           role: 'user',
           content: content,
+          files: uploadedFiles,
           timestamp: new Date().toISOString()
         };
-        state.messages.push(userMsg);
+        messages.push(userMsg);
         saveMessages();
         renderMessage(userMsg);
+        scrollToBottom();
 
         // 清空输入
-        if (els.input) {
-          els.input.value = '';
-          els.input.style.height = 'auto';
-        }
+        if (els.input) els.input.value = '';
+        els.input.style.height = 'auto';
+        selectedFiles = [];
+        renderFilePreview();
         updateSendBtn();
 
         // 显示加载
@@ -540,43 +731,31 @@
         renderMessage({ id: loadingId, role: 'assistant', content: '...', loading: true });
         updateStatus('处理中...', true);
 
-        // 构建 API URL
-        let apiUrl = state.config.gatewayUrl;
-        apiUrl = apiUrl.replace('ws://', 'http://');
-        apiUrl = apiUrl.replace('wss://', 'https://');
-        if (apiUrl.endsWith('/')) {
-          apiUrl = apiUrl.slice(0, -1);
-        }
-        apiUrl = apiUrl + '/v1/chat/completions';
-
-        internalLog('📡 请求 URL: ' + apiUrl);
-        internalLog('📡 网络状态: ' + (navigator.onLine ? '在线' : '离线'));
-        internalLog('📡 API Key: ' + (state.config.apiKey ? '已设置(' + state.config.apiKey.length + '字符)' : '未设置'));
-
-        // 构建历史消息
-        const history = state.messages
-          .filter(m => m.role === 'user' || m.role === 'assistant')
-          .slice(-10)
-          .map(m => ({ role: m.role, content: m.content }));
+        const apiUrl = getApiUrl('/v1/chat/completions');
+        log('📡 Gateway URL: ' + (window.CONFIG.gatewayUrl || '未设置'));
+        log('📡 API Key: ' + (window.CONFIG.apiKey ? '已设置(' + window.CONFIG.apiKey.length + '字符)' : '未设置'));
+        log('📡 请求 URL: ' + apiUrl);
+        log('📡 网络类型: ' + (navigator.connection?.effectiveType || '未知'));
+        log('📡 离线状态: ' + (navigator.onLine ? '在线' : '离线'));
 
         try {
-          internalLog('📡 开始请求...');
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + state.config.apiKey
+              'Authorization': 'Bearer ' + window.CONFIG.apiKey
             },
             body: JSON.stringify({
               model: 'bailian:glm-4.7',
-              messages: [...history, { role: 'user', content: content }],
+              messages: [...history, { role: 'user', content: fullContent }],
               stream: false
             })
           });
 
-          internalLog('📡 响应状态: ' + response.status);
+          log('📡 响应状态: ' + response.status);
 
           if (!response.ok) {
+            // 尝试读取错误内容
             let errorText = '';
             try {
               const contentType = response.headers.get('content-type');
@@ -585,17 +764,28 @@
                 errorText = JSON.stringify(errorJson);
               } else {
                 errorText = await response.text();
+                // 只显示前 200 个字符
+                if (errorText.length > 200) {
+                  errorText = errorText.substring(0, 200) + '...';
+                }
               }
             } catch (e) {
               errorText = '无法读取错误详情';
             }
-            throw new Error('HTTP ' + response.status + ': ' + errorText);
+            throw new Error('HTTP ' + response.status + (errorText ? ': ' + errorText : ''));
+          }
+
+          const contentType = response.headers.get('content-type');
+          log('📡 响应类型: ' + contentType);
+
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            log('⚠️ 非 JSON 响应: ' + text.substring(0, 200));
+            throw new Error('服务器返回非 JSON 响应');
           }
 
           const data = await response.json();
           const reply = data.choices?.[0]?.message?.content || '无回复';
-
-          internalLog('✅ 收到回复: ' + reply.substring(0, 50));
 
           // 移除加载
           const loadingEl = document.getElementById(loadingId);
@@ -608,7 +798,7 @@
             content: reply,
             timestamp: new Date().toISOString()
           };
-          state.messages.push(aiMsg);
+          messages.push(aiMsg);
           saveMessages();
           renderMessage(aiMsg);
           updateStatus('就绪', true);
@@ -616,177 +806,244 @@
         } catch (e) {
           const loadingEl = document.getElementById(loadingId);
           if (loadingEl) loadingEl.remove();
-          internalLog('❌ 请求失败: ' + e.message);
-          internalLog('   堆栈: ' + e.stack);
+          log('❌ 请求失败: ' + e.message);
           updateStatus('错误', false);
-          alert('请求失败: ' + e.message);
+        }
+        scrollToBottom();
+        updateSendBtn();
+      }
+
+      function renderMessage(msg) {
+        if (els.emptyState) els.emptyState.classList.add('hidden');
+        if (els.messages) els.messages.classList.remove('hidden');
+
+        const div = document.createElement('div');
+        div.className = 'message ' + msg.role + (msg.loading ? ' loading' : '');
+        div.id = msg.id;
+
+        const time = new Date(msg.timestamp);
+        const timeStr = time.getHours().toString().padStart(2, '0') + ':' +
+                        time.getMinutes().toString().padStart(2, '0');
+        const avatar = msg.role === 'user' ? '👤' : (msg.role === 'system' ? '⚠️' : '🤖');
+
+        let filesHtml = '';
+        if (msg.files && msg.files.length > 0) {
+          filesHtml = msg.files.map(f => {
+            const fileUrl = f.path ? '/' + f.path : '#';
+            const fileName = f.name || '未知文件';
+            const fileSize = f.size ? (f.size > 1024 ? (f.size/1024).toFixed(1) + ' KB' : f.size + ' B') : '';
+            return '<a href="' + fileUrl + '" class="file-attachment" download="' + fileName + '" target="_blank">📎 ' + fileName + (fileSize ? ' (' + fileSize + ')' : '') + '</a>';
+          }).join('');
+        }
+
+        div.innerHTML = msg.role === 'user' ? `
+          <div class="message-content">
+            <div class="message-body">${escapeHtml(msg.content)}</div>
+            ${filesHtml}
+            <div class="message-time">${timeStr}</div>
+          </div>
+          <div class="avatar">${avatar}</div>
+        ` : `
+          <div class="avatar">${avatar}</div>
+          <div class="message-content">
+            <div class="message-body ${msg.loading ? 'loading-dots' : ''}">${parseMessageContent(msg.content)}</div>
+            <div class="message-time">${timeStr}</div>
+          </div>
+        `;
+
+        if (els.messages) els.messages.appendChild(div);
+      }
+
+      function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text || '';
+        return d.innerHTML;
+      }
+
+      // 解析消息内容（支持 <qqimg> 图片标签）
+      function parseMessageContent(content) {
+        if (!content) return '';
+
+        // 先用 <qqimg> 标签分割内容
+        const parts = content.split(/(<qqimg>.*?<\/qqimg>)/g);
+
+        return parts.map(part => {
+          // 如果是 <qqimg> 标签，转换为图片
+          if (part.startsWith('<qqimg>') && part.endsWith('</qqimg>')) {
+            const url = part.replace('<qqimg>', '').replace('</qqimg>', '').trim();
+
+            // 如果是本地绝对路径（/home/admin/...），转换为相对路径
+            if (url.startsWith('/home/admin/.openclaw/workspace/uploads/')) {
+              const filename = url.replace('/home/admin/.openclaw/workspace/uploads/', '');
+              const src = 'uploads/' + filename;
+              return `<img src="${src}" alt="图片" class="message-image" onclick="window.open('${src}', '_blank')" />`;
+            }
+
+            // 判断是本地路径还是网络URL
+            const isLocal = url.startsWith('/') || url.startsWith('./');
+            const src = isLocal ? url : url;
+            return `<img src="${src}" alt="图片" class="message-image" onclick="window.open('${src}', '_blank')" />`;
+          }
+
+          // 否则进行HTML转义
+          return escapeHtml(part);
+        }).join('');
+      }
+
+      function autoResize(t) {
+        if (!t) return;
+        t.style.height = 'auto';
+        t.style.height = Math.min(t.scrollHeight, 100) + 'px';
+        updateSendBtn();
+      }
+
+      function updateSendBtn() {
+        if (!els.sendBtn) return;
+        const hasContent = els.input && els.input.value.trim();
+        const hasFiles = selectedFiles.length > 0;
+        els.sendBtn.disabled = !(hasContent || hasFiles);
+      }
+
+      function handleEnter(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
         }
       }
 
-      // ============================================
-      // SETTINGS
-      // ============================================
+      function scrollToBottom() {
+        const c = document.getElementById('chat-container');
+        if (c) c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' });
+      }
+
+      function updateStatus(text, ok) {
+        if (els.statusText) {
+          els.statusText.textContent = text;
+          els.statusText.className = 'status ' + (ok ? 'connected' : 'disconnected');
+        }
+      }
+
+      function loadMessages() {
+        const s = localStorage.getItem('openclaw-messages');
+        if (s) {
+          try {
+            messages = JSON.parse(s);
+            messages.forEach(renderMessage);
+            if (messages.length && els.emptyState) els.emptyState.classList.add('hidden');
+          } catch (e) {}
+        }
+      }
+
+      function saveMessages() {
+        localStorage.setItem('openclaw-messages', JSON.stringify(messages));
+      }
+
+      function clearChat() {
+        if (confirm('确定清空所有对话？')) {
+          messages = [];
+          saveMessages();
+          if (els.messages) els.messages.innerHTML = '';
+          if (els.emptyState) els.emptyState.classList.remove('hidden');
+        }
+      }
+
+      function toggleDark() {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('dark-mode', document.body.classList.contains('dark'));
+      }
+
+      function toggleLog() {
+        const logEl = document.getElementById('log');
+        if (logEl) logEl.classList.toggle('show');
+      }
+
       function showSettings() {
-        internalLog('⚙️ 打开设置');
-        if (els.settingGateway) {
-          els.settingGateway.value = state.config.gatewayUrl || '';
-          internalLog('   Gateway 字段: ' + state.config.gatewayUrl);
-        }
-        if (els.settingApikey) {
-          els.settingApikey.value = state.config.apiKey || '';
-          internalLog('   API Key 字段: ' + (state.config.apiKey ? '已设置' : '未设置'));
-        }
+        updateSettingsUI();
         if (els.modal) els.modal.classList.add('active');
       }
 
       function hideSettings() {
-        internalLog('⚙️ 关闭设置');
         if (els.modal) els.modal.classList.remove('active');
       }
 
+      function updateSettingsUI() {
+        const g = document.getElementById('setting-gateway');
+        const k = document.getElementById('setting-apikey');
+        if (g) g.value = window.CONFIG.gatewayUrl || '';
+        if (k) k.value = window.CONFIG.apiKey || '';
+      }
+
       function saveSettings() {
-        const gateway = els.settingGateway ? els.settingGateway.value.trim() : '';
-        const apiKey = els.settingApikey ? els.settingApikey.value.trim() : '';
-
-        internalLog('💾 保存设置...');
-        internalLog('   Gateway: ' + gateway);
-        internalLog('   API Key: ' + (apiKey ? '已设置(' + apiKey.length + '字符)' : '未设置'));
-
-        // 检查 localStorage 是否可用
-        try {
-          localStorage.setItem('test', 'test');
-          localStorage.removeItem('test');
-          internalLog('✅ localStorage 可用');
-        } catch (e) {
-          internalLog('❌ localStorage 不可用: ' + e.message);
-          alert('浏览器不支持本地存储，配置无法保存！');
-          return;
+        const gateway = document.getElementById('setting-gateway');
+        const k = document.getElementById('setting-apikey');
+        
+        log('🔧 开始保存设置...');
+        log('   saveConfig 函数是否存在: ' + (typeof saveConfig !== 'undefined'));
+        log('   gateway 值: ' + (gateway ? gateway.value : 'N/A'));
+        log('   apikey 值: ' + (k ? k.value : 'N/A'));
+        
+        if (gateway && gateway.value.trim()) {
+          window.CONFIG.gatewayUrl = gateway.value.trim();
+          log('   ✅ gatewayUrl 已更新: ' + window.CONFIG.gatewayUrl);
         }
-
-        // 更新配置
-        if (gateway) {
-          state.config.gatewayUrl = gateway;
-          internalLog('✅ Gateway 已更新');
+        
+        if (k && k.value.trim()) {
+          window.CONFIG.apiKey = k.value.trim();
+          log('   ✅ apiKey 已更新: ' + window.CONFIG.apiKey);
         }
-        if (apiKey) {
-          state.config.apiKey = apiKey;
-          internalLog('✅ API Key 已更新');
-        }
-
-        // 保存到 localStorage
-        const saved = saveConfig(state.config);
-
-        if (saved) {
-          // 验证保存
-          setTimeout(() => {
-            const verified = localStorage.getItem('openclaw-config');
-            internalLog('📦 验证保存: ' + (verified ? '成功' : '失败'));
-            if (verified) {
-              internalLog('   内容: ' + verified);
-            }
-          }, 100);
-
-          hideSettings();
-          internalLog('✅ 设置已保存');
-          alert('设置已保存！');
+        
+        if (typeof saveConfig === 'function') {
+          saveConfig(window.CONFIG);
+          log('   ✅ saveConfig 执行成功');
         } else {
-          alert('保存失败，请重试！');
-        }
-      }
-
-      // ============================================
-      // TOGGLES
-      // ============================================
-      function toggleLog() {
-        internalLog('📋 点击日志按钮');
-        if (!els.log) {
-          internalLog('❌ 日志元素未找到！');
+          log('   ❌ saveConfig 函数不存在！');
+          alert('保存失败：配置函数未加载');
           return;
         }
-
-        const isVisible = els.log.classList.contains('show');
-        internalLog('📋 当前状态: ' + (isVisible ? '已显示' : '已隐藏'));
-
-        els.log.classList.toggle('show');
-        const newState = els.log.classList.contains('show');
-        internalLog('📋 新状态: ' + (newState ? '已显示' : '已隐藏'));
-
-        // 如果显示，确保日志已输出
-        if (newState) {
-          internalLog('📋 正在刷新日志内容...');
-          flushLogs();
-          internalLog('📋 日志条数: ' + state.logs.length);
-        }
+        
+        hideSettings();
+        log('💾 设置已保存');
+        
+        // 验证保存是否成功
+        setTimeout(() => {
+          const saved = localStorage.getItem('openclaw-config');
+          log('📦 localStorage 验证: ' + saved);
+        }, 100);
       }
 
-      // ============================================
-      // INITIALIZATION
-      // ============================================
-      function init() {
-        internalLog('🚀 开始初始化...');
+      return {
+        init,
+        sendMessage,
+        autoResize,
+        handleEnter,
+        handleFileSelect,
+        removeFile,
+        clearChat,
+        toggleDark,
+        toggleLog,
+        showSettings,
+        hideSettings,
+        saveSettings,
+        setupKeyboardAdapter
+      };
 
-        // 1. 初始化 DOM 元素
-        initElements();
-
-        // 2. 加载配置
-        state.config = loadConfig();
-        internalLog('📦 当前配置:');
-        internalLog('   Gateway URL: ' + state.config.gatewayUrl);
-        internalLog('   API Key: ' + (state.config.apiKey ? '已设置(' + state.config.apiKey.length + '字符)' : '未设置'));
-
-        // 3. 加载历史消息
-        loadMessages();
-
-        // 4. 绑定事件
-        internalLog('🔗 绑定事件监听器...');
-
-        if (els.input) {
-          els.input.addEventListener('input', autoResize);
-          els.input.addEventListener('keydown', handleEnter);
-          internalLog('✅ 输入框事件已绑定');
-        }
-
-        if (els.sendBtn) {
-          els.sendBtn.addEventListener('click', sendMessage);
-          internalLog('✅ 发送按钮事件已绑定');
-        }
-
-        if (els.logBtn) {
-          els.logBtn.addEventListener('click', toggleLog);
-          internalLog('✅ 日志按钮事件已绑定');
-        }
-
-        if (els.settingsBtn) {
-          els.settingsBtn.addEventListener('click', showSettings);
-          internalLog('✅ 设置按钮事件已绑定');
-        }
-
-        if (els.cancelBtn) {
-          els.cancelBtn.addEventListener('click', hideSettings);
-          internalLog('✅ 取消按钮事件已绑定');
-        }
-
-        if (els.saveBtn) {
-          els.saveBtn.addEventListener('click', saveSettings);
-          internalLog('✅ 保存按钮事件已绑定');
-        }
-
-        // 5. 初始状态
-        updateSendBtn();
-        updateStatus('就绪', true);
-
-        // 6. 标记已初始化
-        state.initialized = true;
-        internalLog('✅ 初始化完成');
-      }
-
-      // 启动
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-      } else {
-        init();
-      }
     })();
+
+    // 暴露到全局作用域（用于 HTML onclick）
+    window.app = app;
+    window.toggleLog = () => app.toggleLog();
+    window.toggleDark = () => app.toggleDark();
+    window.clearChat = () => app.clearChat();
+    window.showSettings = () => app.showSettings();
+    window.hideSettings = () => app.hideSettings();
+    window.saveSettings = () => app.saveSettings();
+    window.sendMessage = () => app.sendMessage();
+    window.autoResize = (t) => app.autoResize(t);
+    window.handleEnter = (e) => app.handleEnter(e);
+    window.handleFileSelect = (e) => app.handleFileSelect(e);
+    window.removeFile = (i) => app.removeFile(i);
+
+    document.addEventListener('DOMContentLoaded', () => app.init());
   </script>
 </body>
 </html>

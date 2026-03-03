@@ -423,16 +423,22 @@
 
       // 启动时检测连接
       async function checkConnection() {
-        const apiUrl = getApiUrl('/v1/models');
+        const apiUrl = getApiUrl('/v1/chat/completions');
         log('📡 检测: ' + apiUrl);
         
         try {
           const response = await fetch(apiUrl, {
-            method: 'GET',
+            method: 'POST',
             headers: {
+              'Content-Type': 'application/json',
               'Authorization': 'Bearer ' + window.CONFIG.apiKey
-            }
-          }, 5000);
+            },
+            body: JSON.stringify({
+              model: 'bailian:glm-4.7',
+              messages: [{ role: 'user', content: 'ping' }],
+              max_tokens: 1
+            })
+          });
           
           if (response.ok) {
             log('✅ 服务器连接成功');
