@@ -4,6 +4,9 @@ const DEFAULT_CONFIG = {
   // Gateway WebSocket 地址
   gatewayUrl: 'http://43.110.16.63:3000',
   
+  // 文件上传地址（QQ Bot 图床）
+  uploadUrl: 'http://43.110.16.63:18765',
+  
   // API Key（Gateway Token）
   apiKey: '1ab581483035706a8289c7e5f2e8b00b',
   

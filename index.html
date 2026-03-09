@@ -678,13 +678,13 @@
         const formData = new FormData();
         formData.append('file', file);
 
+        // 上传到 QQ Bot 图床服务器（端口 18765）
+        const uploadUrl = window.CONFIG.uploadUrl || 'http://43.110.16.63:18765';
+        
         try {
           // 上传文件必须用原生 fetch
-          const response = await fetch('/upload', {
+          const response = await fetch(uploadUrl + '/upload', {
             method: 'POST',
-            headers: {
-              'Authorization': 'Bearer ' + window.CONFIG.apiKey
-            },
             body: formData
           });
 
