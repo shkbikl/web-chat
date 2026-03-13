@@ -2,10 +2,10 @@
 
 const DEFAULT_CONFIG = {
   // API Proxy 地址（留空自动检测）
-  gatewayUrl: 'http://43.110.16.63:3000',
+  gatewayUrl: 'http://43.110.16.63:11035',
   
   // API Key（Gateway Token）
-  apiKey: '1ab581483035706a8289c7e5f2e8b00b',
+  apiKey: '2a19c190980425c278753df29c5c4e4b',
   
   // App 名称
   appName: 'OpenClaw Chat',
