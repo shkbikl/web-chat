@@ -36,13 +36,6 @@ jobs:
       run: |
         yes | sdkmanager --licenses || true
 
-    - name: Sync web assets to www
-      run: |
-        cp -f index.html www/
-        cp -f config.js www/
-        cp -f app.js www/
-        cp -f manifest.json www/
-
     - name: Build Android APK
       run: |
         npx cap sync android
