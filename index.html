@@ -266,6 +266,33 @@
     .btn-secondary { background: #f0f0f0; color: #333; }
     .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
 
+    /* 命运转盘模态框 */
+    .wheel-modal { display: none; position: fixed; inset: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); z-index: 300; overflow-y: auto; }
+    .wheel-modal.active { display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .wheel-modal-content { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 400px; }
+    .wheel-close { position: absolute; top: -10px; right: -10px; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,0.9); font-size: 18px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 10; }
+    .wheel-title { color: #fff; font-size: 1.5rem; margin-bottom: 20px; text-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    .wheel-wrapper { position: relative; margin-bottom: 20px; }
+    .wheel-glow { position: absolute; width: 340px; height: 340px; top: 50%; left: 50%; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%); border-radius: 50%; animation: pulse 2s ease-in-out infinite; pointer-events: none; }
+    @keyframes pulse { 0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.05); } }
+    .wheel-container { position: relative; width: 280px; height: 280px; }
+    #wheelCanvas { width: 280px; height: 280px; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.3)); }
+    .pointer-container { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); z-index: 10; }
+    .pointer { width: 0; height: 0; border-left: 16px solid transparent; border-right: 16px solid transparent; border-top: 35px solid #fff; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
+    .spin-btn { padding: 14px 45px; font-size: 1.1rem; font-weight: 600; background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%); color: #764ba2; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 8px 25px rgba(0,0,0,0.15); transition: all 0.3s ease; margin-bottom: 20px; }
+    .spin-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 35px rgba(0,0,0,0.2); }
+    .spin-btn:active { transform: translateY(0) scale(0.98); }
+    .spin-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+    .result-card { padding: 18px 28px; background: rgba(255,255,255,0.95); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); opacity: 0; transform: translateY(20px) scale(0.9); transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); width: 100%; max-width: 280px; }
+    .result-card.show { opacity: 1; transform: translateY(0) scale(1); }
+    .result-card h3 { color: #764ba2; font-size: 1rem; margin-bottom: 12px; text-align: center; font-weight: 600; }
+    .result-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 1rem; }
+    .result-item:last-child { border-bottom: none; }
+    .result-label { color: #888; font-size: 0.85rem; }
+    .result-value { font-weight: 600; color: #333; }
+    .result-value.positive { color: #10b981; }
+    .result-value.negative { color: #6b7280; }
+
     /* Dark Mode */
     body.dark { background: #1a1a1a; color: #e0e0e0; }
     body.dark header { background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%); }
@@ -322,6 +349,7 @@
       </div>
     </div>
     <div class="header-actions">
+      <button class="btn-icon" onclick="app.showWheel()" title="命运转盘">🎡</button>
       <button class="btn-icon" onclick="app.scrollToBottom()" title="滚动到底部">⬇️</button>
       <button class="btn-icon" onclick="app.toggleLog()">📋</button>
       <button class="btn-icon" onclick="app.toggleDark()">🌙</button>
@@ -355,6 +383,31 @@
     </div>
     <div class="footer-text">Powered by OpenClaw</div>
   </footer>
+
+  <!-- 命运转盘模态框 -->
+  <div class="wheel-modal" id="wheel-modal">
+    <div class="wheel-modal-content">
+      <button class="wheel-close" onclick="app.hideWheel()">✕</button>
+      <h2 class="wheel-title">🎡 每日命运</h2>
+      
+      <div class="wheel-wrapper">
+        <div class="wheel-glow"></div>
+        <div class="wheel-container">
+          <div class="pointer-container">
+            <div class="pointer"></div>
+          </div>
+          <canvas id="wheelCanvas" width="600" height="600"></canvas>
+        </div>
+      </div>
+      
+      <button class="spin-btn" id="spinBtn" onclick="spinWheel()">开始转动</button>
+      
+      <div class="result-card" id="wheelResult">
+        <h3>🎯 今日命运</h3>
+        <div id="resultList"></div>
+      </div>
+    </div>
+  </div>
 
   <div class="modal" id="settings-modal">
     <div class="modal-content">
@@ -1052,6 +1105,19 @@
         }, 100);
       }
 
+      function showWheel() {
+        const modal = document.getElementById('wheel-modal');
+        if (modal) {
+          modal.classList.add('active');
+          initWheel();
+        }
+      }
+
+      function hideWheel() {
+        const modal = document.getElementById('wheel-modal');
+        if (modal) modal.classList.remove('active');
+      }
+
       return {
         init,
         sendMessage,
@@ -1065,7 +1131,10 @@
         showSettings,
         hideSettings,
         saveSettings,
-        setupKeyboardAdapter
+        setupKeyboardAdapter,
+        showWheel,
+        hideWheel,
+        scrollToBottom
       };
 
     })();
@@ -1083,6 +1152,159 @@
     window.handleEnter = (e) => app.handleEnter(e);
     window.handleFileSelect = (e) => app.handleFileSelect(e);
     window.removeFile = (i) => app.removeFile(i);
+    window.showWheel = () => app.showWheel();
+    window.hideWheel = () => app.hideWheel();
+    window.spinWheel = spinWheel;
+
+    // 命运转盘逻辑
+    let wheelInitialized = false;
+    let currentWheelRotation = 0;
+    let isWheelSpinning = false;
+
+    const wheelSegments = [
+      { text: '打', color: '#FF6B6B', icon: '👊' },
+      { text: '不打', color: '#4ECDC4', icon: '✋' },
+      { text: '锻炼', color: '#45B7D1', icon: '💪' },
+      { text: '躺平', color: '#96CEB4', icon: '🛋️' },
+      { text: '学习', color: '#FFEAA7', icon: '📚' },
+      { text: '不学', color: '#DDA0DD', icon: '🎮' }
+    ];
+
+    function initWheel() {
+      const canvas = document.getElementById('wheelCanvas');
+      if (!canvas) return;
+      if (wheelInitialized) {
+        drawWheelCanvas(currentWheelRotation);
+        return;
+      }
+      wheelInitialized = true;
+      drawWheelCanvas(0);
+    }
+
+    function drawWheelCanvas(rotation) {
+      const canvas = document.getElementById('wheelCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const centerX = 300, centerY = 300, radius = 280;
+      const segmentAngle = (2 * Math.PI) / wheelSegments.length;
+
+      ctx.clearRect(0, 0, 600, 600);
+
+      wheelSegments.forEach((seg, i) => {
+        const startAngle = i * segmentAngle + rotation - Math.PI / 2;
+        const endAngle = startAngle + segmentAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.closePath();
+
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+        gradient.addColorStop(0, lightenWheelColor(seg.color, 20));
+        gradient.addColorStop(1, seg.color);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(startAngle + segmentAngle / 2);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '36px Arial';
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillText(seg.icon, radius * 0.65, 0);
+        ctx.font = 'bold 28px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(seg.text, radius * 0.4, 0);
+        ctx.restore();
+      });
+
+      const centerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 50);
+      centerGradient.addColorStop(0, '#fff');
+      centerGradient.addColorStop(1, '#e0e0e0');
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 45, 0, 2 * Math.PI);
+      ctx.fillStyle = centerGradient;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    function lightenWheelColor(color, percent) {
+      const num = parseInt(color.replace('#', ''), 16);
+      const amt = Math.round(2.55 * percent);
+      const R = Math.min(255, (num >> 16) + amt);
+      const G = Math.min(255, ((num >> 8) & 0x00FF) + amt);
+      const B = Math.min(255, (num & 0x0000FF) + amt);
+      return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+    }
+
+    function spinWheel() {
+      if (isWheelSpinning) return;
+      isWheelSpinning = true;
+
+      const btn = document.getElementById('spinBtn');
+      const result = document.getElementById('wheelResult');
+      if (btn) btn.disabled = true;
+      if (result) result.classList.remove('show');
+
+      const spins = 5 + Math.random() * 3;
+      const targetRotation = currentWheelRotation + spins * Math.PI * 2;
+      const duration = 4000;
+      const startTime = performance.now();
+      const startRotation = currentWheelRotation;
+
+      function animate(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 4);
+        currentWheelRotation = startRotation + (targetRotation - startRotation) * easeOut;
+        drawWheelCanvas(currentWheelRotation);
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          showWheelResult();
+          if (btn) btn.disabled = false;
+          isWheelSpinning = false;
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function showWheelResult() {
+      const results = [
+        { label: '打拳', value: Math.random() > 0.5 ? '打 👊' : '不打 ✋', positive: Math.random() > 0.5 },
+        { label: '运动', value: Math.random() > 0.5 ? '锻炼 💪' : '躺平 🛋️', positive: Math.random() > 0.5 },
+        { label: '学习', value: Math.random() > 0.5 ? '学习 📚' : '不学 🎮', positive: Math.random() > 0.5 }
+      ];
+
+      const resultList = document.getElementById('wheelResult');
+      if (!resultList) return;
+      const html = results.map(r => `
+        <div class="result-item">
+          <span class="result-label">${r.label}</span>
+          <span class="result-value ${r.positive ? 'positive' : 'negative'}">${r.value}</span>
+        </div>
+      `).join('');
+
+      const listContainer = resultList.querySelector('#resultList');
+      if (listContainer) {
+        listContainer.outerHTML = `<div id="resultList">${html}</div>`;
+      }
+
+      setTimeout(() => {
+        if (resultList) resultList.classList.add('show');
+      }, 100);
+    }
 
     document.addEventListener('DOMContentLoaded', () => app.init());
   </script>
