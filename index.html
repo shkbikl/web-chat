@@ -100,6 +100,8 @@
     body.dark .dropdown-menu { background: #2d2d2d; }
     body.dark .menu-item { color: #e0e0e0; }
     body.dark .menu-item:hover { background: #3a3a3a; }
+    .menu-divider { height: 1px; background: #e0e0e0; margin: 4px 0; }
+    body.dark .menu-divider { background: #404040; }
 
     /* Chat Container */
     #chat-container {
@@ -387,16 +389,19 @@
     </div>
     <div class="header-actions">
       <button class="btn-icon" onclick="app.scrollToBottom()" title="滚动到底部">⬇️</button>
-      <button class="btn-icon" onclick="app.showSettings()">⚙️</button>
       <div class="menu-wrapper">
-        <button class="btn-icon" onclick="app.toggleMenu()" title="更多">☰</button>
+        <button class="btn-icon" onclick="app.toggleMenu()" title="菜单">☰</button>
         <div class="dropdown-menu" id="dropdown-menu">
           <button class="menu-item" onclick="app.showWheel(); app.hideMenu()">
             <span>🎡</span> 命运转盘
           </button>
+          <button class="menu-item" onclick="app.showSettings(); app.hideMenu()">
+            <span>⚙️</span> 设置
+          </button>
           <button class="menu-item" onclick="app.toggleLog(); app.hideMenu()">
             <span>📋</span> 日志
           </button>
+          <div class="menu-divider"></div>
           <button class="menu-item" onclick="app.toggleDark(); app.hideMenu()">
             <span>🌙</span> 深色模式
           </button>
@@ -1369,6 +1374,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => app.init());
+
+    // 点击菜单外部关闭菜单
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('dropdown-menu');
+      const wrapper = e.target.closest('.menu-wrapper');
+      if (menu && menu.classList.contains('show') && !wrapper) {
+        menu.classList.remove('show');
+      }
+    });
   </script>
 </body>
 </html>
