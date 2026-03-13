@@ -1,11 +1,8 @@
 // OpenClaw Web Chat 配置
 
 const DEFAULT_CONFIG = {
-  // Gateway WebSocket 地址
+  // API Proxy 地址（留空自动检测）
   gatewayUrl: 'http://43.110.16.63:3000',
-  
-  // 文件上传地址（QQ Bot 图床）
-  uploadUrl: 'http://43.110.16.63:18765',
   
   // API Key（Gateway Token）
   apiKey: '1ab581483035706a8289c7e5f2e8b00b',
@@ -41,24 +38,8 @@ function saveConfig(config) {
   localStorage.setItem('openclaw-config', JSON.stringify(config));
 }
 
-// 获取完整的 API URL（将 ws/wss 转换为 http/https）
-function getApiUrl() {
-  let url = window.CONFIG.gatewayUrl;
-  // 将 ws:// 转换为 http://
-  url = url.replace('ws://', 'http://');
-  // 将 wss:// 转换为 https://
-  url = url.replace('wss://', 'https://');
-  // 确保不以 / 结尾
-  if (url.endsWith('/')) {
-    url = url.slice(0, -1);
-  }
-  return url + '/v1/chat/completions';
-}
-
 // 暴露到全局作用域
 window.saveConfig = saveConfig;
-window.loadConfig = loadConfig;
-window.getApiUrl = getApiUrl;
 
 // 全局配置对象
 window.CONFIG = loadConfig();
